@@ -1,0 +1,307 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <head>
+    <title>Using go-perl</title>
+    <link rel="stylesheet" type="text/css" href="../../doc/stylesheet.css">
+  </head>
+
+  <body>
+    <h1>Using go-perl</h1>
+
+    <h2>Introduction</h2>
+
+    <p>
+      The go-perl library provides modules to help parse and navigate
+      GO/OBO style ontologies together with associated gene product
+      annotations.
+    </p>
+
+    <p>
+      The go-perl library does not deal with interfacing or querying
+      the GO database; for this you need <a href="../../go-db-perl/doc/go-db-perl-doc.html">go-db-perl</a>, part of this
+      distribution. You need go-perl in order for go-db-perl to work
+    </p>
+
+    <h2>
+      Background
+    </h2>
+    
+    <p>
+      You should already be familiar with the Gene Ontology project:
+      
+      <ul>
+	<li>
+	  <a href="http://www.geneontology.org">http://www.geneontology.org</a>
+	</li>
+	<li>
+	  <a href="http://obo.sourceforge.net">http://obo.sourcefore.net</a>
+	</li>
+	<li>
+	  <a
+	    href="http://www.geneontology.org/GO.contents.doc.html">GO
+	    documentation</a>
+	</li>
+      </ul>
+    </p>
+
+    <p>
+      You should also be familiar with the file formats GO uses:
+      <ul>
+	<li>
+	  <a href="http://www.geneontology.org/GO.format.html">goflat and
+	    OBO file formats</a>
+	</li>
+	<li>
+	  <a href="http://www.geneontology.org/GO.annotation.html#file">annotation
+	    format</a>
+	</li>
+      </ul>
+    </p>
+
+    <p>
+      Documentation on the rest of the go-dev distribution:
+      <ul>
+	<li>
+	  <a href="../../doc/go-dev-doc.html">go-dev documentation</a>
+	</li>
+      </ul>
+    </p>
+
+    <p>
+      GO Database and Developers page:
+      <ul>
+	<li>
+	  <a
+	    href="http://www.godatabase.org/dev">http://www.godatabase.org/dev</a>
+	</li>
+      </ul>
+    </p>
+
+    <p>
+      And you should be familiar with perl, particularly
+      object-oriented perl!
+    </p>
+
+    <h2>Installation</h2>
+
+    <p>
+      go-perl requires installation of several third-party perl
+      modules. The instructions below should help guide you through
+      this process. If you have never installed perl modules before,
+      and you do not have full write privileges on your machine, you
+      may need the help of a system administrator here.
+    </p>
+
+    <h3>Installation via CPAN</h3>
+
+    <p>
+      The easiest way to install the go-perl software library and
+      associated scripts is via <a
+        href="http://www.cpan.org">CPAN</a>. Note that this may
+      require some privileges set up on your system.
+    </p>
+    <p>
+      Type the following commands on the command line:
+      <div class="codeblock">
+        <pre>
+perl -MCPAN -e shell
+install go-perl
+        </pre>
+      </div>
+      If this is your first time using the CPAN installer, you will be
+      asked some questions regarding your setup - you should go with
+      the default answer for most of these.
+    </p>
+    <p>
+      If this stage was successful, you are now ready to use the
+      go-perl modules and run the go-perl scripts! If this was
+      unsuccessful, then you may have to recruit the help of a
+      friendly perl programmer to determine what went wrong, or follow
+      the manual installation process below.
+    </p>
+
+    <h3>Manual installation</h3>
+    <p>
+      go-perl is written entirely in perl, and should be relatively
+      easy to install; it does require a few other packages, all of
+      which should be available from CPAN (some of these may already
+      be installed on your system)
+    </p>
+    <p>
+      To obtain go-perl (which is part of the full go-dev
+      distribution), please see the section <b>Software Downloads</b>
+      in the main <a href="http://www.godatabase.org/dev/index.html#software_downloads">GO Database
+      and Developers page</a>.
+    </p>
+    <ul>
+      <li>
+	Data::Stag - version 0.06 or higher
+      </li>
+      <li>
+	XML::Writer
+      </li>
+      <li>
+	Data::Dumper
+      </li>
+      <li>
+	XML::Parser
+      </li>
+      <li>
+	Text::Balanced -  only necessary for parsing OBO Text files
+      </li>
+      <li>
+	Digest::MD5 - only necessary for using the GO::Model::Seq object
+      </li>
+    </ul>
+
+    <h3>Linux/Unix/OS X Installation</h3>
+
+    <p>
+      First make sure everything works OK:
+    </p>
+    <div class="codeblock">
+      <pre>
+cd go-perl
+perl Makefile.PL
+make test
+      </pre>
+    </div>
+
+    <p>
+      If "make test" completes successfully, you can install the
+      modules and script like this (may require root permission):
+    </p>
+    <div class="codeblock">
+      <pre>
+make install
+      </pre>
+    </div>
+
+    <h4>Installing in your home directory</h4>
+    <p>
+      It is not actually necessary to install the go-perl modules. Just
+      place them somewhere accessible, and make sure perl knows where
+      they are. For example, assuming you unpacked the go-dev
+      distribution in the top level of your home directory, you would do
+      this:
+    </p>
+
+    <div class="codeblock">
+      <pre>
+SETENV PERL5LIB "$PERL5LIB:~/go-dev/go-perl"
+      </pre>
+    </div>
+
+    <p>
+      Then do this:
+    </p>
+    <div class="codeblock">
+      <pre>
+SETENV PATH "$PATH:~/go-dev/go-perl/scripts"
+      </pre>
+    </div>
+
+    <p>
+      You may wish to make sure that the above environment variable is
+      set whenever you start up a session, by placing the command in
+      your .cshrc
+    </p>
+
+    <h3>PC Installation</h3>
+
+    <p>
+      Sorry, you're on your own here. I believe others may have
+      succeeded with PC installations. You may wish to try asking for
+      help on the mail list here.
+    </p>
+
+
+    <h2>Scripts</h2>
+    <p>
+      The go-perl distribution comes with a number of scripts. These
+      should all be executable if you follow the installation
+      instructions. 
+    </p>
+    <p>
+      See <a href="/dev/pod/go-perl.html">go-perl</a> for a full list
+      of scripts.
+    </p>
+    <h2>About</h2>
+
+    <p>
+      To use the 
+      <b>NOTE:</b> if you do not intend to use the go-perl library
+      directly then you don't need to read any further here. Simply
+      follow the installation instructions above, and you will be able
+      to use any of the tools in the scripts directory.
+    </p>
+
+    <p>
+
+      go-perl is a set of perl modules for parsing, manipulating and
+      exporting GO or OBO style ontology files. It includes parsers
+      for the various GO/OBO formats, extendable handlers for dealing
+      with the results of a parse, and an object model.
+
+    </p>
+
+    <p>
+      Unlike packages such as BioPerl, the object model is not
+      strictly necessary for performing a lot of useful tasks. You can
+      actually get by quite well with just using the Parser/Handler
+      framework
+    </p>
+
+    <h2>Documentation</h2>
+    <p>
+      Most of the relevant documentation is kept in POD format. You
+      can read the HTML version here:
+      <ul>
+        <li><a href="/dev/pod/go-perl.html">go-perl</a> introduction</li>
+        <li><a href="/dev/pod/GO/Parser.html">GO::Parser</a> parsing
+          using go-perl</li>
+        <li><a
+            href="/dev/pod/GO/Model/Graph.html">GO::Model::Graph</a>
+          the core of the go-perl object model</li>
+      </ul>
+    </p>
+    <h3>Event Handling Architecture</h3>
+    <p>
+      You can also read about the internal details of the event
+      handling mechanism and how to write your own perl event handlers
+      here: <a href="go-perl-event-handling.html">go-perl event handling</a>
+    </p>
+
+    <h2>Database API</h2>
+
+    <p>
+      The go-perl module does not have a database API - you need the
+      <a
+      href="../../go-db-perl/doc/go-db-perl-doc.html">go-db-perl</a>
+      modules, also part of the go-dev distribution. You also need the
+      go-database - see the GO Database SQL Docs <a
+      href="../../sql/doc/godb-sql-doc.html">go-dev/sql</a>, or
+      download the latest build from <a href="http://www.godatabase.org/dev/database">http://www.godatabase.org/dev/database</a>
+    </p>
+
+    <h2>Mail Lists</h2>
+    <p>
+      <ul>
+        <li>
+          <a
+          href="http://mail.fruitfly.org/mailman/listinfo/go-database">http://mail.fruitfly.org/mailman/listinfo/go-database</a>
+          -- Announcements and user help with the GO Database
+          downloads and schema
+        </li>
+        <li>
+          <a href="http://lists.sourceforge.net/lists/listinfo/gmod-ontol-sw-dev">http://lists.sourceforge.net/lists/listinfo/gmod-ontol-sw-dev</a> -- go-dev software discussion
+        </li>
+    </p>
+    <hr>
+    <address><a href="mailto:cjm@fruitfly.org">Chris Mungall</a></address>
+<!-- Created: Fri Jan 23 14:30:13 PST 2004 -->
+<!-- hhmts start -->
+Last modified: Tue Nov 30 11:42:09 PST 2004
+<!-- hhmts end -->
+  </body>
+</html>

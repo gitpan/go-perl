@@ -1,0 +1,13 @@
+go-perl modules
+===============
+
+This is a perl library for parsing go/obo flatfiles into various
+formats, or into perl objects
+
+See the doc/ directory
+
+See also
+
+  perldoc GO/Parser.pm
+
+see INSTALL for installation instructions

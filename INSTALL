@@ -1,0 +1,39 @@
+Installing go-perl
+==================
+
+First set the environment variable GO_ROOT to where you have the
+go-dev directoryy on your system
+
+bash shells:
+
+  export GO_ROOT=$HOME/go-dev
+
+other shells:
+
+  setenv GO_ROOT $HOME/go-dev
+
+Installing system wide:
+
+perl Makefile.PL
+make test
+make install
+
+...Or you can just use the modules without installing them [ie skip
+the "make install step]
+
+Assuming you have unpacked the go-dev distribution in your home directory:
+
+setenv PERL5LIB "$PERL5LIB:~/go-dev/go-perl"
+setenv PATH "$PATH:~/go-dev/scripts"
+
+For full documentation, see the doc/ directory
+
+You may be prompted to install other third party perl modules. These
+will all be available via CPAN. If you have not used CPAN before, type
+this:
+
+perl -MCPAN -e shell
+<<follow setup instructions>>
+install <<Module name here>>
+quit
+

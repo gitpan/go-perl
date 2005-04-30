@@ -1,4 +1,4 @@
-# $Id: Basic.pm,v 1.2 2004/11/29 20:18:06 cmungall Exp $
+# $Id: Basic.pm,v 1.4 2005/03/30 21:15:48 cmungall Exp $
 #
 #
 # see also - http://www.geneontology.org
@@ -69,7 +69,7 @@ sub parse_def { parse(@_, {fmt=>'go_def'}) }
 sub parse_assoc { parse(@_, {fmt=>'go_assoc'}) }
 
 sub parse {
-    my $opt = {fmt=>'obo'};
+    my $opt = {format=>'obo'};
     my @files =
       map {
           if (ref($_)) {
@@ -86,7 +86,9 @@ sub parse {
               $_;
           }
       } @_;
-    my $parser = GO::Parser->new({format=>$opt->{fmt}, handler=>'obj'});
+    my $parser = GO::Parser->new({format=>$opt->{fmt}, 
+                                  use_cache=>$opt->{use_cache},
+                                  handler=>'obj'});
     $parser->parse($_) foreach @files;
     $graph = $parser->handler->graph;
     $graph;

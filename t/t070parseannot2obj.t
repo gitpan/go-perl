@@ -22,11 +22,20 @@ my $parser = new GO::Parser ({format=>'go_ont',
 #$parser->handler->add_root;
 ok(1);
 $parser->parse (shift @ARGV || "./t/data/generic.0208");
+my $a2n = $parser->acc2name_h;
 #$parser->parse (shift @ARGV || "./t/data/go-truncated.obo");
 $parser = new GO::Parser ({format=>'go_assoc',
                            handler=>$parser->handler});
+$parser->acc2name_h($a2n);
+$parser->cache_errors;
 $parser->parse (shift @ARGV || "./t/data/test-gene_association.fb");
-ok(1);
+
+# we expect one error because of the deliberately bogus last line
+# refering to a non-existent GO ID
+my @errs = $parser->errlist;
+#print $_->sxpr foreach @errs;
+ok(@errs == 1); # bogus last line
+
 my $graph = $parser->handler->graph;
 my $it = $graph->create_iterator;
 while(my $node = $it->next_node_instance){
@@ -53,4 +62,4 @@ ok(@{$graph->deep_association_list('GO:0003673')} == 86);
 #ok(@{$term->deep_association_list} == 86);
 
 my $prods = $graph->deep_product_list($term->acc);
-ok((grep {print $_->type,"\n";$_->type eq 'gene'} @$prods) == 16);
+ok((grep {printf "Type:%s\n", $_->type;$_->type eq 'gene'} @$prods) == 16);

@@ -1,0 +1,1 @@
+cvs status | perl -ne 'print "$1\n" if m@Repository revision.*/cvsroot/geneontology/go\-dev/go\-perl/(.*),v@' > MANIFEST

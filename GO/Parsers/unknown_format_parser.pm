@@ -1,4 +1,4 @@
-# $Id: unknown_format_parser.pm,v 1.6 2004/11/24 02:28:02 cmungall Exp $
+# $Id: unknown_format_parser.pm,v 1.8 2005/03/14 22:18:17 cmungall Exp $
 #
 #
 # see also - http://www.geneontology.org
@@ -36,7 +36,6 @@ sub parse_file_by_type {
 sub parse_file {
     my ($self, $file, $dtype) = @_;
     $self->file($file);
-
     my $fmt;   # input file format
     my $p;
     
@@ -87,8 +86,31 @@ sub parse_file {
 		$fmt = "obo_xml";
 	    }
 	    if (!$fmt) {
+                # if suffix is a known parser module, use it
+                if ($file =~ /\.(\w+)$/) {
+                    my $suffix = $1;
+                    my $mod = "GO/Parsers/$suffix"."_parser.pm";
+                    eval {
+                        require "$mod";
+                    };
+                    if ($@) {
+                    }
+                    else {
+                        $fmt = $suffix;
+                    }
+                }
+            }
+	    if (!$fmt) {
 		#$self->throw("I have no idea how to parse: $file\n");
-		$fmt = 'go_ont';
+                open(F,$file) || $self->throw("Cannot open $file");
+                my $first_line = <F>;
+                if ($first_line =~ /^format/) {
+                    $fmt = 'obo_text';
+                }
+                else {
+                    $fmt = 'go_ont';
+                }
+                close(F);
 	    }
 	}
 	$p = GO::Parser->get_parser_impl($fmt);

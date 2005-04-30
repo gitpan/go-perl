@@ -1,4 +1,4 @@
-# $Id: Parser.pm,v 1.7 2004/11/24 02:27:59 cmungall Exp $
+# $Id: Parser.pm,v 1.13 2005/03/18 19:45:55 cmungall Exp $
 #
 #
 # see also - http://www.geneontology.org
@@ -16,7 +16,7 @@ fetch L<GO::Model::Graph> objects using a parser:
 
   # Scenario 1: Getting objects from a file
   use GO::Parser;
-  my $parser = new GO::Parser({handler=>'obj'});
+  my $parser = new GO::Parser({handler=>'obj',use_cache=>1});
   $parser->parse("function.ontology");     # ontology
   $parser->parse("GO.defs");               # definitions
   $parser->parse("ec2go");                 # external refs
@@ -64,6 +64,14 @@ L<http://www.geneontology.org/GO.annotation.html#file>
 This module will generate XML events from a correctly formatted GO/OBO
 file
 
+=head1 SEE ALSO
+
+This module is a part of go-dev, see:
+
+L<http://www.godatabase.org/dev>
+
+for more details
+
 =head1 PUBLIC METHODS
 
 =head2 new
@@ -76,9 +84,10 @@ file
  Function: creates a parser object
  Example : 
  Returns : GO::Parser
- Args    : a hashref of arguments
-           format: a format for which a parser exists
-           handler: a format for which a perl handler exists
+ Args    : a hashref of arguments:
+            format: a format for which a parser exists
+            handler: a format for which a perl handler exists
+            use_cache: (boolean) see caching below
 
 =head2 parse
 
@@ -97,8 +106,8 @@ file
  Synonyms: 
  Function: gets/sets a GO::Handler object
  Example : 
- Returns : GO::Handler::*
- Args    : GO::Handler::*
+ Returns : L<GO::Handlers::base>
+ Args    : L<GO::Handlers::base>
 
 =head1 FORMATS
 
@@ -142,11 +151,23 @@ Files with prefix "gene-association."
 
 =item obo_xml
 
-B<NOT YET FINALISED>
-
 Files with suffix ".obo.xml" or ".obo-xml"
 
 This is the XML version of the OBO flat file format above
+
+See L<http://www.godatabase.org/dev/xml/doc/xml-doc.html>
+
+=item obj_yaml
+
+A YAML dump of the perl L<GO::Model::Graph> object. You need L<YAML>
+from CPAN for this to work
+
+=item obj_storable
+
+A dump of the perl L<GO::Model::Graph> object. You need L<Storable>
+from CPAN for this to work. This is intended to cache objects on the
+filesystem, for fast access. The obj_storable representation may not
+be portable
 
 =head2 PARSING ARCHITECTURE
 
@@ -168,7 +189,8 @@ some standard XSL stylesheets. These can be found in the
 B<go-dev/go-perl/GO/Handlers> directory
 
 If you are interested in getting perl B<objects> from files then you
-will want the B<obj> handler, L<GO::Model::obj>
+will want the B<obj> handler, which gives back L<GO::Model::Graph>
+objects
 
 The parsing architecture gives you the option of using the go-perl
 object model, or just parsing the XML events directly
@@ -301,11 +323,18 @@ GO XML-RDF file format
 
 =item owl
 
-OWL description logic format
+OWL format (default: OWL-DL)
+
+OWL is a W3C standard format for ontologies
+
+You will need the XSL files from the full go-dev distribution to run
+this; see the XML section in L<http://www.godatabase.org/dev>
 
 =item prolog
 
-prolog facts - you will need a prolog compiler/interpreter to use these
+prolog facts - you will need a prolog compiler/interpreter to use
+these. You can reason over these facts using Obol or the forthcoming
+Bio-LP project
 
 =item sxpr
 
@@ -322,6 +351,18 @@ catches events and loads them into a database conforming to the GO
 database schema; see the directory go-dev/sql, as part of the whole
 go-dev distribution; or www.godatabase.org/dev/database
 
+=item obj_yaml
+
+A YAML dump of the perl L<GO::Model::Graph> object. You need L<YAML>
+from CPAN for this to work
+
+=item obj_storable
+
+A dump of the perl L<GO::Model::Graph> object. You need L<Storable>
+from CPAN for this to work. This is intended to cache objects on the
+filesystem, for fast access. The obj_storable representation may not
+be portable
+
 =back
 
 =head1 EXAMPLES OF DATATYPE TEXT FORMATS
@@ -330,8 +371,8 @@ go-dev distribution; or www.godatabase.org/dev/database
 
 eg format: go_ont for storing graphs and metadata; for example:
 
-  !version: $Revision: 1.7 $
-  !date: $Date: 2004/11/24 02:27:59 $
+  !version: $Revision: 1.13 $
+  !date: $Date: 2005/03/18 19:45:55 $
   !editors: Michael Ashburner (FlyBase), Midori Harris (SGD), Judy Blake (MGD)
   $Gene_Ontology ; GO:0003673
    $cellular_component ; GO:0005575
@@ -470,9 +511,10 @@ sub new {
     if (!ref($init_h)) {
         $init_h = {@_};
     }
-    my $fmt = lc($init_h->{format});
+    my $fmt = $init_h->{format} || $init_h->{fmt} || '';
+    my $use_cache = $init_h->{use_cache};
+    $fmt = lc($fmt) unless $fmt =~ /::/;
 #    $fmt = 'gotext' unless $fmt;
-
     if (!$fmt) {
 	# this parser guesses/defers on what type it is parsing
 	$fmt = "unknown_format";
@@ -499,10 +541,18 @@ sub new {
 		$hclass = "GO::Handlers::$handler";
 	    }
 	}
-	$class->load_module($hclass);
+        eval {
+            $class->load_module($hclass);
+        };
+        if ($@) {
+            print STDERR $@, "\n\n\n";
+            
+            $self->throw("No such handler: $handler");
+        }
         $handler = $hclass->new($init_h->{handler_args});
     }
     $p->handler($handler);
+    $p->use_cache($use_cache);
 
     delete $init_h->{parser};
     delete $init_h->{handler};

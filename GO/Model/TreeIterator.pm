@@ -1,4 +1,4 @@
-# $Id: TreeIterator.pm,v 1.3 2004/11/24 02:28:02 cmungall Exp $
+# $Id: TreeIterator.pm,v 1.4 2005/01/31 19:30:34 cmungall Exp $
 #
 # This GO module is maintained by Chris Mungall <cjm@fruitfly.org>
 #
@@ -194,13 +194,13 @@ sub next_node_instance {
   if ($ni) {
     my $depth = $ni->depth;
     if ($previous_depth == $depth) {
-      @$parent_array->[$depth] = $ni->term->public_acc;
+      $parent_array->[$depth] = $ni->term->public_acc;
     } elsif ($previous_depth > $depth) {
       while ($previous_depth > $depth) {
 	$previous_depth -= 1;
 	pop @$parent_array;
       }
-      @$parent_array->[$depth] = $ni->term->public_acc;
+      $parent_array->[$depth] = $ni->term->public_acc;
     } elsif ($previous_depth < $depth) {
       push @$parent_array, $ni->term->public_acc;
     }
@@ -233,7 +233,7 @@ sub should_draw_below {
       my $i = 0;
       my $length;
       while ($i < scalar(@$current_coords)) {
-	if (@$coords->[$i] ne @$current_coords->[$i]) {
+          if ($coords->[$i] ne $current_coords->[$i]) {
 	  $result = 0;
 	}
       } continue {
@@ -246,7 +246,7 @@ sub should_draw_below {
       my $i = 0;
       my $test = 1;
       while ($i < scalar(@$coords)) {
-	if (@$current_coords->[$i] ne @$coords->[$i]) {
+          if ($current_coords->[$i] ne $coords->[$i]) {
 	  $test = 0;
 	}
       } continue {
@@ -294,7 +294,7 @@ sub delete_array {
 	if (scalar(@$arr) >= scalar(@$parent_array)) {
 	my $i = 0;
 	while ($i < scalar(@$parent_array)) {
-	    if (@$parent_array->[$i] ne @$arr->[$i]) {
+	    if ($parent_array->[$i] ne $arr->[$i]) {
 		$test = 0;
 	    }
 	} continue {
@@ -323,7 +323,7 @@ sub is_selected {
       my $i = 0;
       my $test = 1;
       while ($i < scalar(@$arr)) {
-	if (@$parent_array->[$i] ne @$arr->[$i]) {
+          if ($parent_array->[$i] ne $arr->[$i]) {
 	  $test = 0;
 	}
       } continue {

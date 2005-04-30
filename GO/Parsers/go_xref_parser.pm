@@ -1,4 +1,4 @@
-# $Id: go_xref_parser.pm,v 1.3 2004/11/24 02:28:02 cmungall Exp $
+# $Id: go_xref_parser.pm,v 1.4 2005/01/31 19:30:35 cmungall Exp $
 #
 #
 # see also - http://www.geneontology.org
@@ -72,6 +72,10 @@ sub parse_fh {
             my ($db, $dbacc, $goname, $goacc) = ($1, $2, $3, $4);
             my @goaccs = split(/\, /, $goacc);
             foreach $goacc (@goaccs) {
+                if ($self->acc_not_found($goacc)) {
+                    $self->parse_err("No such ID: $goacc");
+                    next;
+                }
                 $self->start_event(TERM);
                 $self->event(ID, $goacc);
                 $self->start_event(XREF_ANALOG);
@@ -82,7 +86,7 @@ sub parse_fh {
             }
         }
         else {
-            $self->message("cannot parse this line");
+            $self->parse_err("cannot parse this line: $_");
         }
     }
     $self->end_event(DBXREFS);

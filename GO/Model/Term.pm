@@ -1,4 +1,4 @@
-# $Id: Term.pm,v 1.7 2004/11/24 02:28:02 cmungall Exp $
+# $Id: Term.pm,v 1.8 2005/02/11 05:44:56 cmungall Exp $
 #
 # This GO module is maintained by Chris Mungall <cjm@fruitfly.org>
 #
@@ -160,6 +160,22 @@ sub category { shift->type(@_) }
 sub ontology { shift->type(@_) }
 sub namespace { shift->type(@_) }
 
+
+
+=head2 in_subset
+
+  Usage   - if ($term->in_subset('goslim_prok');
+  Returns - bool
+  Args    - subset-name str
+
+=cut
+
+sub in_subset {
+    my $self = shift;
+    my $subset = shift;
+    return 1 if grep {$_ eq $subset} @{$self->subset_list || []};
+    return 0;
+}
 
 =head2 definition
 

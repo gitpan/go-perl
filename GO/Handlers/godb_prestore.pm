@@ -1,4 +1,4 @@
-# $Id: godb_prestore.pm,v 1.8 2004/11/24 02:28:00 cmungall Exp $
+# $Id: godb_prestore.pm,v 1.9 2005/03/22 22:38:11 cmungall Exp $
 #
 # This GO module is maintained by Chris Mungall <cjm@fruitfly.org>
 #
@@ -34,7 +34,6 @@ speed)
 # makes objects from parser events
 
 package GO::Handlers::godb_prestore;
-use GO::SqlWrapper qw (:all);
 use Data::Stag qw(:all);
 use base qw(GO::Handlers::base);
 

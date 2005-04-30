@@ -1,4 +1,4 @@
-# $Id: Xref.pm,v 1.2 2004/11/24 02:28:02 cmungall Exp $
+# $Id: Xref.pm,v 1.3 2005/02/11 05:44:56 cmungall Exp $
 #
 # This GO module is maintained by Chris Mungall <cjm@fruitfly.org>
 #
@@ -69,6 +69,7 @@ sub _valid_dbnames {
 =head2 xref_key
 
   Alias   - acc
+  Alias   - accession
   Usage   -
   Returns -
   Args    -

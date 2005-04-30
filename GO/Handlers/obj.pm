@@ -1,4 +1,4 @@
-# $Id: obj.pm,v 1.11 2004/11/24 02:28:00 cmungall Exp $
+# $Id: obj.pm,v 1.13 2005/04/19 04:35:49 cmungall Exp $
 #
 # This GO module is maintained by Chris Mungall <cjm@fruitfly.org>
 #
@@ -26,7 +26,6 @@
 # makes objects from parser events
 
 package GO::Handlers::obj;
-use Data::Dumper;
 use Data::Stag qw(:all);
 use GO::Parsers::ParserEventNames;
 use base qw(GO::Handlers::base);
@@ -134,7 +133,6 @@ sub stanza {
     my $tree = shift;
     my $acc = stag_get($tree, ID);
     if (!$acc) {
-        print Dumper($tree);
         $self->throw( "NO ACC: $@\n" );
     }
     my $term;
@@ -150,7 +148,6 @@ sub stanza {
 
     $term = $self->apph->create_term_obj;
     my %h = ();
-    use Data::Dumper;
     foreach my $sn (stag_kids($tree)) {
         my $k = $sn->name;
         my $v = $sn->data;
@@ -234,6 +231,9 @@ sub stanza {
         }
         elsif ($k eq IS_ROOT) {
             $term->is_root($v);
+        }
+        elsif ($k eq BUILTIN) {
+            # ignore
         }
         elsif ($k eq IS_OBSOLETE) {
             $term->is_obsolete($v);
@@ -324,8 +324,6 @@ sub e_prod {
         if (!$acc) {
             $self->message("no accession given");
             next;
-#            print Dumper $tree;
-#            exit;
         }
         my $t = $g->get_term($acc);
         if (!$t) {
@@ -336,8 +334,6 @@ sub e_prod {
             else {
                 $self->message("no such term $acc");
                 next;
-#                print Dumper $tree;
-#                return;
             }
         }
         my @evs = stag_get($assoc, EVIDENCE);

@@ -1,0 +1,40 @@
+VERSION 0.01
+============
+
+VERSION 0.02
+============
+
+2005-01-31      - [cjm] Inititation of Changes file
+
+2005-01-31      - [cjm] changed dependencies in Makefile.PL
+                  Data::Stag 0.07 is the only dependency
+                  (and as of 0.08, no dependencies for Data::Stag)
+
+                - [cjm] XML::LibXML now used in place of xsltproc hack
+
+                - [cjm] Added acc2name_h to base_parser - index
+                  can be used for fast ID checking during parsing
+
+                - [cjm] fixed litemode to report namespace
+                        (map2slim no longer complains)
+
+                - [cjm] fixed prob with go_ont_parser
+                        files with '*' as a type code
+
+2005-02-01      - [cjm] map2slim now uses no_duplicates option 
+
+2005-02-08      - [cjm] new scripts:
+                        go-dag-summary.pl
+                        go-filter-subset.pl
+                        go-show-paths-to-root.pl
+2005-03-14      - [cjm] new parser/handler: obj_storable
+                        added caching to parser
+                        new script option: -use_cache
+
+2005-03-28      - [cjm] added go-apply-xslt to go-perl/scripts
+
+2005-04-02      - [cjm] obo_text output date is now oboedit compatible
+
+2005-04-16      - [cjm] fixed subtle obo_text_parser bug
+                         is_root was not being set if the root term      
+                         was immediately followed by a Typedef stanza

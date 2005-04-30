@@ -79,7 +79,21 @@
 
     <p>
       And you should be familiar with perl, particularly
-      object-oriented perl!
+      object-oriented perl (unless you just want to run the scripts
+      that are part of go-perl)
+    </p>
+
+    <h2>Download</h2>
+    <p>
+      You can get the official release from CPAN - <a
+      href="http://www.cpan.org/~cmungall/go-perl">http://www.cpan.org/~cmungall/go-perl</a>. You
+      can get the latest bleeding edge version from <a
+      href="http://sourceforge.net/cvs/?group_id=36855">Sourceforge
+      CVS</a>. In addition, the GO Database <a
+      href="http://www.godatabase.org/dev/database/daily">daily</a>
+      and <a href="http://www.godatabase.org/dev/database">monthly</a>
+      releases come with the version of the code used to build that
+      release.
     </p>
 
     <h2>Installation</h2>
@@ -92,129 +106,11 @@
       may need the help of a system administrator here.
     </p>
 
-    <h3>Installation via CPAN</h3>
-
     <p>
-      The easiest way to install the go-perl software library and
-      associated scripts is via <a
-        href="http://www.cpan.org">CPAN</a>. Note that this may
-      require some privileges set up on your system.
+      Full installation instructions are in the file <a
+      href="../INSTALL.html">INSTALL.html</a> or <a
+      href="INSTALL">INSTALL</a>
     </p>
-    <p>
-      Type the following commands on the command line:
-      <div class="codeblock">
-        <pre>
-perl -MCPAN -e shell
-install go-perl
-        </pre>
-      </div>
-      If this is your first time using the CPAN installer, you will be
-      asked some questions regarding your setup - you should go with
-      the default answer for most of these.
-    </p>
-    <p>
-      If this stage was successful, you are now ready to use the
-      go-perl modules and run the go-perl scripts! If this was
-      unsuccessful, then you may have to recruit the help of a
-      friendly perl programmer to determine what went wrong, or follow
-      the manual installation process below.
-    </p>
-
-    <h3>Manual installation</h3>
-    <p>
-      go-perl is written entirely in perl, and should be relatively
-      easy to install; it does require a few other packages, all of
-      which should be available from CPAN (some of these may already
-      be installed on your system)
-    </p>
-    <p>
-      To obtain go-perl (which is part of the full go-dev
-      distribution), please see the section <b>Software Downloads</b>
-      in the main <a href="http://www.godatabase.org/dev/index.html#software_downloads">GO Database
-      and Developers page</a>.
-    </p>
-    <ul>
-      <li>
-	Data::Stag - version 0.06 or higher
-      </li>
-      <li>
-	XML::Writer
-      </li>
-      <li>
-	Data::Dumper
-      </li>
-      <li>
-	XML::Parser
-      </li>
-      <li>
-	Text::Balanced -  only necessary for parsing OBO Text files
-      </li>
-      <li>
-	Digest::MD5 - only necessary for using the GO::Model::Seq object
-      </li>
-    </ul>
-
-    <h3>Linux/Unix/OS X Installation</h3>
-
-    <p>
-      First make sure everything works OK:
-    </p>
-    <div class="codeblock">
-      <pre>
-cd go-perl
-perl Makefile.PL
-make test
-      </pre>
-    </div>
-
-    <p>
-      If "make test" completes successfully, you can install the
-      modules and script like this (may require root permission):
-    </p>
-    <div class="codeblock">
-      <pre>
-make install
-      </pre>
-    </div>
-
-    <h4>Installing in your home directory</h4>
-    <p>
-      It is not actually necessary to install the go-perl modules. Just
-      place them somewhere accessible, and make sure perl knows where
-      they are. For example, assuming you unpacked the go-dev
-      distribution in the top level of your home directory, you would do
-      this:
-    </p>
-
-    <div class="codeblock">
-      <pre>
-SETENV PERL5LIB "$PERL5LIB:~/go-dev/go-perl"
-      </pre>
-    </div>
-
-    <p>
-      Then do this:
-    </p>
-    <div class="codeblock">
-      <pre>
-SETENV PATH "$PATH:~/go-dev/go-perl/scripts"
-      </pre>
-    </div>
-
-    <p>
-      You may wish to make sure that the above environment variable is
-      set whenever you start up a session, by placing the command in
-      your .cshrc
-    </p>
-
-    <h3>PC Installation</h3>
-
-    <p>
-      Sorry, you're on your own here. I believe others may have
-      succeeded with PC installations. You may wish to try asking for
-      help on the mail list here.
-    </p>
-
 
     <h2>Scripts</h2>
     <p>
@@ -229,11 +125,10 @@ SETENV PATH "$PATH:~/go-dev/go-perl/scripts"
     <h2>About</h2>
 
     <p>
-      To use the 
-      <b>NOTE:</b> if you do not intend to use the go-perl library
-      directly then you don't need to read any further here. Simply
-      follow the installation instructions above, and you will be able
-      to use any of the tools in the scripts directory.
+      To use the <b>NOTE:</b> if you do not intend to use the go-perl
+      library as a programmer then you don't need to read any further
+      here. Simply follow the installation instructions above, and you
+      will be able to use any of the tools in the scripts directory.
     </p>
 
     <p>
@@ -301,7 +196,7 @@ SETENV PATH "$PATH:~/go-dev/go-perl/scripts"
     <address><a href="mailto:cjm@fruitfly.org">Chris Mungall</a></address>
 <!-- Created: Fri Jan 23 14:30:13 PST 2004 -->
 <!-- hhmts start -->
-Last modified: Tue Nov 30 11:42:09 PST 2004
+Last modified: Sat Feb 12 18:00:02 PST 2005
 <!-- hhmts end -->
   </body>
 </html>

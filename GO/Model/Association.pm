@@ -1,9 +1,9 @@
-# $Id: Association.pm,v 1.3 2004/11/24 02:28:01 cmungall Exp $
+# $Id: Association.pm,v 1.4 2004/12/03 00:00:50 cmungall Exp $
 #
 # This GO module is maintained by Chris Mungall <cjm@fruitfly.org>
 #
 # see also - http://www.geneontology.org
-#          - http://www.godatabase.org/dev
+#          - http://www.fruitfly.org/annot/go
 #
 # You may distribute this module under the same terms as perl itself
 
@@ -41,6 +41,8 @@ use GO::Model::Evidence;
 use strict;
 use vars qw(@ISA);
 
+use Data::Dumper;
+
 use base qw(GO::Model::Root Exporter);
 
 
@@ -60,6 +62,8 @@ sub _initialize
     # sometimes this is from the external world and sometimes from the db
     my $product_h = {};
     my $ev_h = {};
+  
+    # SHULY Nov 28, 04 - added the gene product type to the product hash 
     if (defined ($paramh->{gene_product_id})) {
 	$product_h->{speciesdb} = $paramh->{xref_dbname};
 	$product_h->{acc} = $paramh->{xref_key};
@@ -67,10 +71,14 @@ sub _initialize
 	$product_h->{symbol} = $paramh->{symbol};
 	$product_h->{full_name} = $paramh->{full_name} 
 	if defined ($paramh->{full_name});
+        # SHULY - added the type to the hash
+	#$product_h->{type} = $paramh->{type_id};
+	$product_h->{type_id} = $paramh->{type_id};
     
         if (!$self->apph) {
             confess("ASSERTION ERROR");
         }
+
 	my $product = $self->apph->create_gene_product_obj($product_h);
 	$product->{species_id} = $paramh->{species_id};
 
@@ -81,6 +89,8 @@ sub _initialize
 	delete $paramh->{gene_product_id};
 	delete $paramh->{symbol};
 	delete $paramh->{full_name};
+        # SHULY - added the type to the hash
+	delete $paramh->{type_id};
 	delete $paramh->{species_id};
     
     }

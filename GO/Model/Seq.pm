@@ -1,4 +1,4 @@
-# $Id: Seq.pm,v 1.3 2004/11/24 02:28:02 cmungall Exp $
+# $Id: Seq.pm,v 1.4 2005/01/25 06:17:28 cmungall Exp $
 #
 # This GO module is maintained by Chris Mungall <cjm@fruitfly.org>
 #
@@ -30,10 +30,8 @@ to get bioperl, see http://www.bioperl.org
 
 use Carp;
 use Exporter;
-use Digest::MD5;
 use GO::Utils qw(rearrange);
 use GO::Model::Root;
-use Bio::PrimarySeq;
 use strict;
 use vars qw(@ISA $AUTOLOAD);
 
@@ -61,6 +59,7 @@ sub _initialize
             }
         }
     }
+    require "Bio/PrimarySeq.pm";
     my $pseq = Bio::PrimarySeq->new(@bpargs);
     $self->pseq($pseq);
     $self->SUPER::_initialize(\%h);
@@ -126,6 +125,7 @@ sub md5checksum {
     if (!$res) {
 	return $self->{md5checksum};
     }
+    require "Digest/MD5.pm";
     my $md5 = Digest::MD5->new;
     $md5->add($self->residues);
     my $hex = $md5->hexdigest;

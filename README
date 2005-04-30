@@ -1,13 +1,20 @@
 go-perl modules
 ===============
 
-This is a perl library for parsing go/obo flatfiles into various
-formats, or into perl objects
+This is a collection of perl code for dealing with GO and OBO style
+ontologies. It is part of the go-dev distribution, but can be used
+independently. The code contains both scripts (which can be used with
+no knowledge of perl), and libraries which will be of use to perl
+programmers using GO or OBO.
 
-See the doc/ directory
+See the doc/ directory for more documentation
 
 See also
 
-  perldoc GO/Parser.pm
+  perldoc go-perl.pod
 
-see INSTALL for installation instructions
+Or look online
+
+http://www.godatabase.org/dev
+
+see the file INSTALL for installation instructions

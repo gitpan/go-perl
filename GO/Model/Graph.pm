@@ -1,4 +1,4 @@
-# $Id: Graph.pm,v 1.9 2004/11/29 20:18:12 cmungall Exp $
+# $Id: Graph.pm,v 1.14 2005/04/20 01:22:54 cmungall Exp $
 #
 # This GO module is maintained by Chris Mungall <cjm@fruitfly.org>
 #
@@ -130,9 +130,9 @@ use Exporter;
 use GO::Utils qw(rearrange max);
 use GO::Model::Root;
 use GO::Model::Term;
+use GO::Model::Path;
 use GO::Model::Relationship;
 use GO::Model::GraphIterator;
-#use strict;
 use FileHandle;
 use Exporter;
 use Data::Dumper;
@@ -253,7 +253,8 @@ sub iterate {
     }
 
     my $it = $self->create_iterator(@args);
-    
+    $it->no_duplicates(1);
+
     while (my $ni = $it->next_node_instance) {
         &$sub($ni);
     }
@@ -373,21 +374,45 @@ sub subgraph {
     return $subgraph;
 }
 
+=head2 subgraph_by_terms
+
+  Usage   - my $subgraph = $graph->subgraph_by_terms($terms);
+  Usage   - my $subgraph = $graph->subgraph_by_terms($terms,{partial=>1});
+  Returns - GO::Model::Graph
+  Args    - GO::Model::Term listref
+
+creates a subgraph of the current graph containing the specified terms
+
+The path-to-top will be calculated for all terms and added to the
+subgraph, UNLESS the partial option is set; in this case a
+relationship between 
+
+=cut
+
 sub subgraph_by_terms {
     my $self = shift;
     my $terms = shift || [];
+    my $opt = shift || {};
     my $g = $self->apph->create_graph_obj;
     my %done = ();
+    my %in_set = map {$_->acc=>1} @$terms;
+    my $partial = $opt->{partial};
     foreach my $term (@$terms) {
         my $it = $self->create_iterator($term->acc);
+        if ($partial) {
+            $it->subset_h(\%in_set);
+        }
         $it->direction('up');
         while (my $ni = $it->next_node_instance) {
             my $t = $ni->term;
-            last if $done{$t->acc};
-            $done{$t->acc} = 1;
-            $g->add_term($t);
             my $rel = $ni->parent_rel;
             $g->add_relationship($rel) if $rel;
+            # don't add term twice (but do add rel to term)
+            # don't continue past already-visited term
+            next if $done{$t->acc};
+            $done{$t->acc} = 1;
+
+            $g->add_term($t);
         }
     }
     return $g;
@@ -485,6 +510,31 @@ sub get_term_by_name {
     return $terms[0];
 }
 *get_node_by_name = \&get_term_by_name;
+
+=head2 get_terms_by_subset
+
+  Usage   - my $term = $graph->get_terms_by_subset("goslim_plant");
+  Returns - GO::Model::Term
+  Args    - string
+
+  returns a GO::Model::Term object for a subset
+  the term must be in the Graph object
+
+CASE INSENSITIVE
+
+See also L<GO::Model::Term>
+
+=cut
+
+sub get_terms_by_subset {
+    my $self = shift;
+    my $subset = shift || confess;
+    
+    my @terms = grep { $_->in_subset($subset) } @{$self->get_all_terms};
+    
+    return \@terms;
+}
+*get_nodes_by_subset = \&get_terms_by_subset;
 
 =head2 get_top_nodes
 
@@ -646,11 +696,49 @@ See also L<GO::Model::Path>
 
 =cut
 
+#sub FAST_paths_to_top {
+#    my $self= shift;
+#    my $acc = shift;
+#    my %is_ancestor_h = ();
+#    $self->iterate(sub {
+#                       my $ni = shift;
+#                       $is_ancestor_h->{$ni->term->acc}=1;
+#                       return;
+#                   },
+#                   {acc=>$acc,
+#                    direction=>'up'}
+#                  );
+#    print "$_\n" foreach keys %is_ancestor_h;
+#    my @root_accs =
+#      grep {!$self->n_parents($_)} (keys %is_ancestor_h);
+#    if (!@root_accs) {
+#        confess("ASSERTION ERROR: No root accs for $acc");
+#    }
+#    if (@root_accs > 1) {
+#        confess("ONTOLOGY ERROR: >1 root for $acc");
+#    }
+#    my $root_acc = shift @root_accs;
+#    my @nodes = ( {acc=>$root_acc,paths=>[]} );
+    
+#    while (@nodes) {
+#        my $node = shift @nodes;
+#        my $curr_acc = $node->{acc};
+#        my $child_rels = $self->get_child_relationships($curr_acc);
+#        foreach my $child_rel (@$child_rels) {
+#            my $child_term = $self->get_term($child_rel->acc2);
+#            my $child_acc = $child_term->acc;
+#            next unless $is_ancestor_h{$child_acc};
+            
+#        }
+#    }
+#    die 'todo';
+#}
+
 sub paths_to_top {
     my $self= shift;
     require GO::Model::Path;
     my $acc=shift;
-    
+
     my $path = GO::Model::Path->new;
     my @nodes = ({path=>$path, acc=>$acc});
 
@@ -699,7 +787,7 @@ sub node_count {
     my $self = shift;
     return scalar(@{$self->get_all_nodes});
 }
-*term_count = \&term_count;
+*term_count = \&node_count;
 
 =head2 n_associations
 
@@ -747,9 +835,11 @@ See also L<GO::Model::GeneProduct>
 sub n_deep_associations {
     my $self = shift;
     my $acc = shift;
-    my $cnt = $self->n_associations($acc);
-    map {$cnt+= $self->n_deep_associations($_->acc)} 
-    @{$self->get_child_terms($acc) || []};
+    my $rcterms = $self->get_recursive_child_terms($acc);
+    my $cnt = 0;
+    foreach (@$rcterms){
+        $cnt+= $self->n_associations($_->acc)
+    }
     return $cnt;
 }
 
@@ -1300,7 +1390,7 @@ sub get_parent_accs_by_type {
     my $term = shift;
     my $type = shift;
     my $rels = $self->get_parent_relationships($term);
-    return [map {$_->acc1} grep {lc($_->type) eq $type } @$rels];
+    return [map {$_->acc1} grep {lc($_->type) eq lc($type) } @$rels];
 }
 
 
@@ -1745,6 +1835,47 @@ sub to_ptuples {
     return @stmts;
 }
 
+=head2 export
+
+  Usage   - $graph->export({format=>$format});
+  Returns -
+  Args    - opt hash
+
+writes out the graph in any export format, including obo, go_ont, owl,
+png (graphviz) etc
+
+=cut
+
+sub export {
+    my $self = shift;
+    my $opt = shift || {};
+    my $format = $opt->{format} || 'obo';
+    delete $opt->{format};
+
+    # todo: filehandles/files
+
+    if ($format eq 'png') {
+
+        require "GO/IO/Dotty.pm";
+        my $graphviz =
+          GO::IO::Dotty::go_graph_to_graphviz( $self,
+                                                  {node => {shape => 'box'},
+                                                   %$opt,
+                                                  });
+        print $graphviz->as_png;
+    }
+    elsif ($format eq 'go_ont') {
+        # todo: tidy this up
+        $self->to_text_output(-fmt=>'gotext');
+    }
+    else {
+        my $p = GO::Parser->new({format=>"GO::Parsers::obj_emitter",
+                                 handler=>$format});
+        $p->emit_graph($self);
+    }
+    return;
+}
+
 =head2 to_xml
 
   Usage   -
@@ -1872,7 +2003,6 @@ sub add_relationship {
     }
     if (!ref($rel)) {
 	my ($from_id, $to_id, $type) = @_;
-        printf STDERR "$from_id $to_id $type\n";
 	$rel = GO::Model::Relationship->new({acc1=>$from_id, acc2=>$to_id});
         $rel->type($type);
     }
@@ -2253,7 +2383,7 @@ sub delete_node_with_reconnect {
 }
 
 
-sub sub_graph {
+sub DEPRECATED_sub_graph {
   my ($self, $terms) = @_;
 
   # Output a clone of the graph
@@ -2312,7 +2442,7 @@ sub split_graph_by_func {
     while (my $ni = $it->next_node_instance) {
         my $term = $ni->term;
         my $rel = $ni->parent_rel;
-        next unless !$rel || lc($rel->type) eq "isa";
+        next unless !$rel || lc($rel->type) eq "is_a";
         my ($n) = &$func($term);
 #        my $t1 = GO::Model::Term->new({name=>$n1});
 #        my $t2 = GO::Model::Term->new({name=>$n});
@@ -2344,8 +2474,6 @@ sub split_graph_by_func {
         if ($rel) {
             my $np = $h{$rel->acc1};
             if ($np) {
-                printf STDERR "ADDING %s %s %s\n", $np->acc, $t2->acc, $rel->type;
-                printf STDERR "ADDING %s %s %s\n", $t2->acc, $term->acc, $rtype;
                 # new externalised ontology
                 $ng->add_relationship($np->acc, $t2->acc, $rel->type);
                 # x-product

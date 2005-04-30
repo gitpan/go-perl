@@ -1,4 +1,4 @@
-# $Id: go_def_parser.pm,v 1.5 2004/11/24 02:28:02 cmungall Exp $
+# $Id: go_def_parser.pm,v 1.6 2005/03/22 22:38:32 cmungall Exp $
 #
 #
 # see also - http://www.geneontology.org
@@ -67,6 +67,7 @@ sub parse_fh {
 	if ($line =~ /^term:\s+(.*)/) {
 	    $self->pop_stack_to_depth(1);
 	    $self->start_event(TERM);
+            $self->event(NAME, $1);
 	    $in_def = 0;
 	}
 	elsif ($line =~ /^goid:\s+(\S+)/) {

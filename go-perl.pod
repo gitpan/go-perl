@@ -1,4 +1,4 @@
-# $Id: go-perl.pod,v 1.4 2004/11/30 19:42:42 cmungall Exp $
+# $Id: go-perl.pod,v 1.8 2005/03/18 19:45:54 cmungall Exp $
 #
 # see also - http://www.geneontology.org
 #          - http://www.godatabase.org/dev
@@ -21,7 +21,7 @@
   my $ancestor_terms =
     $graph->get_recursive_parent_terms($term->acc);
   foreach my $anc_term (@$ancestor_terms) {
-    printf "  Ancestor term: %s %s\n", $term->acc, $term->name;
+    printf "  Ancestor term: %s %s\n", $anc_term->acc, $anc_term->name;
   }
 
   # ** FROM THE COMMAND LINE ** (requires go-dev/xml)
@@ -111,7 +111,43 @@ to either create a new gene association file, containing the most
 pertinent GO slim accessions, or in count-mode, in which case it will
 give distinct gene product counts for each slim term.
 
-for full instructions, see L<scripts::map2slim>
+for full instructions, see L<map2slim>
+
+=item go-dag-summary.pl
+
+Generates a summary of the DAG structure of an ontology file
+
+A row will be generated for every ontology in the file, with the
+following data columns:
+
+  input filename
+  total no of terms
+  total no of relationships
+  total no of paths
+  avg no of paths per term (p/t)
+  maximum no of paths for any term
+  ID of term with maximum no of paths
+
+=back
+
+for full instructions, see L<go-dag-summary.pl>
+
+=item go-show-paths-to-root.pl
+
+Will show all possible paths from a term to the root/top in the
+ontology
+
+for full instructions, see L<go-show-paths-to-root.pl>
+
+=item go-filter-subset.pl
+
+Exports a subset of an ontology from a file. The subset can be based
+on a specified set of IDs, a preset "subset" filter in the ontology
+file (eg a GO "slim" or subset), or a user-defined filter.
+
+The subset can be exported in any format, including a graphical image
+
+for full instructions, see L<go-filter-subset.pl>
 
 =item go2fmt.pl
 
@@ -119,7 +155,7 @@ generic file converter. This will convert any go/obo formatted file
 such as ontology files and association files and write output in some
 other format or report. See the full list of convenience scripts below.
 
-for full instructions, see L<scripts::go2fmt>
+for full instructions, see L<go2fmt.pl>
 
 =item go2chadoxml
 
@@ -144,6 +180,9 @@ converts a file in any valid go/obo format to obo_xml. See also L<go2fmt.pl>
 =item go2owl
 
 converts a file in any valid go/obo format to owl. See also L<go2fmt.pl>
+
+You will need to download the full go-dev distro to get the XSLTs from
+the XML directory
 
 =item go2pathlist
 
@@ -238,5 +277,5 @@ as perl itself.
 =cut
 
 package go-perl;
-$VERSION='0.01';
+$VERSION='0.02';
 1;

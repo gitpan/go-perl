@@ -1,15 +1,27 @@
 #!/usr/local/bin/perl -w
 
 use lib '.';
+
+use constant NUMTESTS => 12*3;
 BEGIN {
     eval { require Test; };
     use Test;    
-    plan tests => 12 * 3;
+    plan tests => NUMTESTS;
 }
 # All tests must be run from the software directory;
 # make sure we are getting the modules from here:
 use strict;
 use GO::Parser;
+
+eval {
+    require "XML/Parser/PerlSAX.pm";
+};
+if ($@) {
+    for (1..NUMTESTS) {
+        skip("XML::Parser::PerlSAX not installed",1);
+    }
+    exit 0;
+}
 
 # ----- REQUIREMENTS -----
 

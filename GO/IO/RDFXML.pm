@@ -1,4 +1,4 @@
-# $Id: RDFXML.pm,v 1.3 2004/11/24 02:28:00 cmungall Exp $
+# $Id: RDFXML.pm,v 1.4 2005/04/21 19:59:58 cmungall Exp $
 #
 # This GO module is maintained by Brad Marshall <bradmars@yahoo.com>
 #
@@ -125,7 +125,7 @@ sub start_document {
     $self->{writer}->xmlDecl("UTF-8");
     $self->{writer}->doctype("go:go", 
 			     '-//Gene Ontology//Custom XML/RDF Version 2.0//EN',
-			     'http://www.godatabase.org/dtd/go.dtd');
+			     'http://www.geneontology.org/dtd/go.dtd');
     $self->{writer}->startTag('go:go', 
 		   'xmlns:go'=>'http://www.geneontology.org/dtds/go.dtd#',
 		   'xmlns:rdf'=>'http://www.w3.org/1999/02/22-rdf-syntax-ns#');

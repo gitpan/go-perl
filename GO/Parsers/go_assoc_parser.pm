@@ -1,4 +1,4 @@
-# $Id: go_assoc_parser.pm,v 1.7 2004/11/24 02:28:02 cmungall Exp $
+# $Id: go_assoc_parser.pm,v 1.8 2005/01/31 19:30:35 cmungall Exp $
 #
 #
 # see also - http://www.geneontology.org
@@ -226,11 +226,14 @@ sub parse_fh {
 	$source_db) = @vals;
 
 
-	# let's be strict - it's a good way of detecting errors
 #	if (!grep {$aspect eq $_} qw(P C F)) {
 #	    $self->parse_err("Aspect column says: \"$aspect\" - aspect must be P/C/F");
 #	    next;
 #	}
+        if ($self->acc_not_found($termacc)) {
+	    $self->parse_err("No such ID: $termacc");
+	    next;
+        }
 	if (!($ref =~ /:/)) {
 	    $ref = "medline:$ref";
 	}

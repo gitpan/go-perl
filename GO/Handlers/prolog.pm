@@ -21,9 +21,27 @@ sub e_typedef {
     my ($self, $typedef) = @_;
     $self->cmt("-- Property/Slot --\n");
     my $id = $typedef->get_id || $self->throw($typedef->sxpr);
-    $self->fact(property => [$id, $typedef->sget_name]);
+    my $proptype = 'property';
+    my $domain = $typedef->get_domain;
+    my $range = $typedef->get_range;
+    if ($range =~ /^xsd:/) {
+        $proptype = 'slot';
+    }
+    $self->fact($proptype, [$id, $typedef->sget_name]);
     my @is_as = $typedef->get_is_a;
     $self->fact('subclass', [$id, $_]) foreach @is_as;
+    foreach (qw(inverse_of is_reflexive is_anti_symmetric is_symmetric is_transitive)) {
+        if ($typedef->sget($_)) {
+            $self->fact($_,[$id]);
+        }
+    }
+    $self->export_tags($typedef);
+    foreach (qw(domain range)) {
+        my $val = $typedef->sget($_);
+        if ($val) {
+            $self->fact("property_$_",[$id,$val]);
+        }
+    }
     $self->nl;
     return;
 }
@@ -35,8 +53,6 @@ sub e_term {
     my $name = $term->get_name;
     #$name =~ s/_/ /g;   # ontologies lack consistency; force use of spc
     my $ont = $term->get_namespace;
-    my $def = $term->get_def;
-    my $defstr = $def ? $def->sget_defstr : '';
 
     if ($term->get_is_obsolete) {
 	$self->fact(obsolete => [$id,$name,$ont]);
@@ -55,19 +71,135 @@ sub e_term {
     if ($ont) {
 	$self->fact('belongs', [$id, $ont]);
     }
-    if ($def) {
-	# prolog doesn't need this for now - keep the db small
-	# $self->fact('description', [$id, $def]);
-    }
-    my @is_as = $term->get_is_a;
+    my @is_as = $term->findval_is_a;
     $self->fact('subclass', [$id, $_], $name_h->{$_}) foreach @is_as;
+    my @xp = $term->get_intersection_of;
+    if (@xp) {
+        my $genus;
+        @xp = grep {
+            if ($_->get_type eq 'is_a') {
+                if ($genus) {
+                    $self->warn(">1 genus for $id/$name");
+                }
+                $genus = $_->get_to;
+                0;
+            }
+            else {
+                1;
+            }
+        } @xp;
+        $self->fact('genus',[$id, $genus]);
+        $self->fact('differentium', [$id, $_->get_type, $_->sget_to])
+          foreach @xp;
+    }
     my @rels = $term->get_relationship;
     $self->fact('restriction', 
 		[$id, $_->get_type, $_->get_to], $name_h->{$_->get_to}) 
       foreach @rels;
+
+    foreach (qw(is_anonymous)) {
+        if ($term->sget($_)) {
+            $self->fact($_,[$id]);
+        }
+    }
+    $self->export_tags($term);
     $self->nl;
+
+    # metadata
+
     return;
 }
 
+# stuff common to terms and typedefs
+sub export_tags {
+    my ($self, $term) = @_;
+    my $def = $term->get_def;
+    my $id = $term->sget_id;
+    if ($def) {
+        $self->fact('def',[$id, $def->sget_defstr]);
+    }
+    foreach ($term->get_synonym) {
+        $self->fact('synonym',[$id, $_->findval_scope || '',$_->sget_synonym_text]);
+    }
+    foreach ($term->get_xref_analog) {
+        $self->fact('class_xref',[$id, sprintf("%s:%s",$_->sget_dbname,$_->sget_acc)]);
+    }
+    #foreach ($term->get_subset) {
+    #    $self->fact('belongs_subset',$_->findval_scope || '',$_->sget_synonym_text);
+    #}
+    foreach (qw(inverse_of lexical_category)) {
+        my $val = $term->sget($_);
+        if ($val) {
+            $self->fact($_,[$id,$val]);
+        }
+    }
+    return;
+}
+
+sub nextid_by_prod {
+    my $self = shift;
+    $self->{_nextid_by_prod} = shift if @_;
+    $self->{_nextid_by_prod} = {} 
+      unless $self->{_nextid_by_prod};
+
+    return $self->{_nextid_by_prod};
+}
+
+
+# gene products -> generic instances
+# !EXPERIMENTAL!
+sub e_prod {
+    my ($self, $gp) = @_;   
+    my $proddb = $self->up(-1)->sget_proddb;
+    my $prodacc = $gp->sget_prodacc;
+    my $id = "$proddb:$prodacc";
+    $self->fact('inst',[$id,$gp->sget_prodsymbol]);
+    $self->fact('inst_of',[$id,$gp->sget_prodtype]);
+    # taxonID points to a metaclass
+    # (eg taxon:7227 is both an instance and a class)
+    $self->fact('inst_sv',[$id,'in_organism','taxon:'.$gp->sget("prodtaxa")]);
+    foreach my $k (qw(symbol name syn)) {
+        my @vals = $gp->get("prod$k");
+        foreach (@vals) {
+            $self->fact('inst_sv',[$id,$k,$_]);
+        }
+    }
+    my @assocs = $gp->get_assoc;
+    my $idh = $self->nextid_by_prod;
+    foreach my $assoc (@assocs) {
+        my $n = $idh->{$id}++;
+        my $aid = "$id-$n";
+        $self->fact('inst_of',[$aid,$assoc->sget_termacc]);
+        $self->fact('inst_sv',[$id,'has_role',$aid]);
+        my @evs = $assoc->get_evidence;
+        foreach my $ev (@evs) {
+            $self->fact('inst_sv',
+                        [$aid,'with_evidence',$ev->sget_evcode]);
+        }
+        my @ins = $assoc->get_in;
+        foreach my $in (@ins) {
+#            my $aqid = "$aid-$in";
+#            $self->fact('inst',[$aqid,$in]);
+#            $self->fact('inst_sv',
+#                        [$aid,'in',$aqid]);
+            $self->fact('inst_sv',
+                        [$aid,'in',$in]);
+        }
+    }
+}
+
+sub e_instance {
+    my ($self, $inst) = @_; 
+    my $id = $inst->get_id;
+    my $class = $inst->get_instance_of;
+    $self->fact('inst_of',[$id,$class]);
+    my $name = $inst->sget_name;
+    if (defined $name) {
+        $self->fact('inst',[$id,$name]);
+    }
+    foreach my $pv ($inst->get_property_value) {
+         $self->fact('inst_sv',[$id,$pv->sget_property,$pv->sget_value]);
+    }
+}
 
 1;

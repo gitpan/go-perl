@@ -1,4 +1,4 @@
-# $Id: mesh_parser.pm,v 1.2 2004/11/24 02:28:02 cmungall Exp $
+# $Id: mesh_parser.pm,v 1.4 2005/03/30 21:15:48 cmungall Exp $
 #
 #
 # see also - http://www.geneontology.org
@@ -20,13 +20,15 @@ package GO::Parsers::mesh_parser;
 
 =head1 DESCRIPTION
 
+EXPERIMENTAL
+
 =head1 AUTHOR
 
 =cut
 
 use Exporter;
-use GO::Parsers::BaseParser;
-@ISA = qw(GO::Parsers::BaseParser Exporter);
+use GO::Parsers::base_parser;
+@ISA = qw(GO::Parsers::base_parser Exporter);
 
 use Carp;
 use FileHandle;

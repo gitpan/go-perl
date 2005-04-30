@@ -17,9 +17,15 @@ sub cmt {
 
 sub prologquote {
     my $s = shift;
-    $s = '' unless defined $s;
-    $s =~ s/\'/\'\'/g;
-    "'$s'";
+    if (ref($s)) {
+        sprintf("[%s]",
+                join(',',map{prologquote($_)} @$s));
+    }
+    else {
+        $s = '' unless defined $s;
+        $s =~ s/\'/\'\'/g;
+        "'$s'";
+    }
 }
 
 sub nl {

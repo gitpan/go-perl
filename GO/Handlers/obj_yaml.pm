@@ -7,6 +7,7 @@ sub e_obo {
     my $self = shift;
     my $g = $self->g;
     $self->print(Dump $g);
+    return;
 }
 
 1;

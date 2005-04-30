@@ -1,12 +1,9 @@
 #XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
 name:         go-perl
-version:      0.01
+version:      0.02
 version_from: go-perl.pod
 installdirs:  site
 requires:
-    Digest::MD5:                   0
-    XML::Writer:                   0
-    Bio::Seq:                      0
     Data::Stag:                    0.07
     Data::Dumper:                  0
 

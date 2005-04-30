@@ -1,4 +1,4 @@
-# $Id: GraphIterator.pm,v 1.4 2004/11/29 20:18:14 cmungall Exp $
+# $Id: GraphIterator.pm,v 1.6 2005/02/11 05:44:56 cmungall Exp $
 #
 # This GO module is maintained by Chris Mungall <cjm@fruitfly.org>
 #
@@ -57,7 +57,7 @@ use vars qw(@EXPORT_OK %EXPORT_TAGS);
 use base qw(GO::Model::Root Exporter);
 
 sub _valid_params {
-    return qw(graph acc order sort_by sort_by_list noderefs direction no_duplicates reltype_filter visited arcs_visited compact);
+    return qw(graph acc order sort_by sort_by_list noderefs direction no_duplicates reltype_filter visited arcs_visited compact subset_h);
 }
 
 =head2 order
@@ -115,7 +115,7 @@ sub reset_cursor {
     my $self = shift;
     my $acc = shift;
     
-    $self->visited([]);
+    $self->visited({});
     $self->arcs_visited({});
     my $terms;
     if ($acc) {
@@ -187,21 +187,62 @@ sub next_node_instance {
     my $noderef = shift @$noderefs;
     my $term = $noderef->term;
     my $depth = $noderef->depth;
-    my @child_relns;
+    my @child_relns = ();
     my $dir = 
       (!$self->direction || $self->direction ne "up") ? "down" : "up";
-    if ($dir eq "down") {
-        @child_relns = 
-          @{$self->graph->get_child_relationships($term->acc)};
-    }
-    elsif ($dir eq "up") {
 
-        @child_relns = 
-          @{$self->graph->get_parent_relationships($term->acc)};
-    }
-    else {
-    }
+    # default is to traverse a distance of 1 in the DAG
+    # however, if subset_h is set, we want to traverse the
+    # transitive distance to the next node in the specified subset
+    my $subset_h = $self->subset_h;
+    my @accs = ($term->acc);   # current IDs
 
+    # iterate to next node - usually just 1 iteration, unless subset_h is set
+    while (@accs) {
+        my @this_child_relns = ();
+        my $acc = shift @accs;
+        if ($dir eq "down") {
+            @this_child_relns = 
+              @{$self->graph->get_child_relationships($acc)};
+            if ($subset_h) {
+                @this_child_relns =
+                  grep {
+                      if ($subset_h->{$_->acc2}) {
+                          $_->acc1($term->acc);
+                          1;
+                      }
+                      else {
+                          push(@accs, $_->acc2);
+                          0;
+                      }
+                  } @this_child_relns;
+            }
+        }
+        elsif ($dir eq "up") {
+            @this_child_relns = 
+              @{$self->graph->get_parent_relationships($acc)};
+            if ($subset_h) {
+                @this_child_relns =
+                  grep {
+                      my $keep;
+                      if ($subset_h->{$_->acc1}) {
+                          $_->acc2($term->acc);
+                          $keep=1;
+                      }
+                      else {
+                          push(@accs, $_->acc1);
+                          $keep=0;
+                      }
+                      $keep;
+                  } @this_child_relns;
+            }
+        }
+        else {
+            die $dir;
+        }
+        push(@child_relns, @this_child_relns);
+    }
+    
     if ($self->reltype_filter) {
         my %filh = ();
         my $fs = $self->reltype_filter;
@@ -235,8 +276,6 @@ sub next_node_instance {
     
     my $sort_by = $self->sort_by || "alphabetical";
     my $sort_by_list = $self->sort_by_list || [];
-#    print "<PRE>sort_by_list has ".scalar(@$sort_by_list)." elements , number of terms to sort = ".scalar(@new)."</PRE>\n"
-#      if ($sort_by eq 'pos_in_list');
 
     my %fh = 
       (
@@ -254,8 +293,8 @@ sub next_node_instance {
         my $lookup = $self->visited;
         my @unique = ();
         foreach (@new) {
-            if (!$lookup->[$_->term->acc]) {
-                $lookup->[$_->term->acc] = 1;
+            if (!$lookup->{$_->term->acc}) {
+                $lookup->{$_->term->acc} = 1;
                 push(@unique, $_);
             }
         }

@@ -1,4 +1,4 @@
-# $Id: obj_emitter.pm,v 1.1 2004/11/24 02:28:02 cmungall Exp $
+# $Id: obj_emitter.pm,v 1.2 2005/02/11 05:44:56 cmungall Exp $
 #
 #
 # see also - http://www.geneontology.org
@@ -114,6 +114,16 @@ sub emit_term {
                               [DBXREF,dbxref($_)]
                           } @$xrefs
                          ]);
+        }
+        elsif ($tag eq SYNONYM) {
+            my $sh = $t->synonyms_by_type_idx || {};
+            foreach my $type (keys %$sh) {
+                foreach my $val (@{$sh->{$type} || []}) {
+                    $self->event(SYNONYM,
+                                 [['@'=>[[scope=>$type]]],
+                                  [SYNONYM_TEXT,$val]]);
+                }
+            }
         }
         elsif ($tag eq IS_A) {
             foreach (grep {$_->type eq 'is_a'} @$parent_rels) {

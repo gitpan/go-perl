@@ -1,4 +1,4 @@
-# $Id: Evidence.pm,v 1.2 2004/11/24 02:28:01 cmungall Exp $
+# $Id: Evidence.pm,v 1.3 2005/03/08 00:30:26 sshu Exp $
 #
 # This GO module is maintained by Chris Mungall <cjm@fruitfly.org>
 #
@@ -122,6 +122,8 @@ sub seq_acc {
   Usage   -
   Returns -
   Args    -
+
+equivalent to WITH column in gene_association files, and evidence_dbxref tables in db
 
 =cut
 

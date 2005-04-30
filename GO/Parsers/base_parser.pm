@@ -1,4 +1,4 @@
-# $Id: base_parser.pm,v 1.5 2004/11/24 02:28:02 cmungall Exp $
+# $Id: base_parser.pm,v 1.12 2005/03/22 22:38:32 cmungall Exp $
 #
 #
 # see also - http://www.geneontology.org
@@ -79,7 +79,7 @@ sub init {
     my $self = shift;
 
     $self->messages([]);
-    $self->acc2termname({});
+    $self->acc2name_h({});
     $self;
 }
 
@@ -87,12 +87,6 @@ sub parsed_ontology {
     my $self = shift;
     $self->{parsed_ontology} = shift if @_;
     return $self->{parsed_ontology};
-}
-
-sub acc2termname {
-    my $self = shift;
-    $self->{_acc2termname} = shift if @_;
-    return $self->{_acc2termname};
 }
 
 =head2 normalize_files
@@ -118,7 +112,7 @@ sub normalize_files {
             my $nfn = $fn;
             $nfn =~ s/\.gz$//;
             my $cmd = "gzip -dc $fn > $nfn";
-            print STDERR "Running $cmd\n";
+            #print STDERR "Running $cmd\n";
             my $err = system("$cmd");
             if ($err) {
                 push(@errors,
@@ -204,6 +198,40 @@ sub force_namespace {
     return $self->{_force_namespace};
 }
 
+sub replace_underscore {
+    my $self = shift;
+    $self->{_replace_underscore} = shift if @_;
+    return $self->{_replace_underscore};
+}
+
+# EXPERIMENTAL: cache objects
+sub use_cache {
+    my $self = shift;
+    $self->{_use_cache} = shift if @_;
+    return $self->{_use_cache};
+}
+
+# EXPERIMENTAL: returns subroutine
+# sub maps name to cached name
+sub file_to_cache_sub {
+    my $self = shift;
+    my $lite = $self->litemode;
+    my $suffix = $lite ? ".lcache" : ".cache";
+    $self->{_file_to_cache_sub} = shift if @_;
+    return $self->{_file_to_cache_sub} ||
+      sub {
+          my $f = shift;
+          $f =~ s/\.\w+$//;
+          $f .= $suffix;
+          return $f;
+      };
+}
+
+
+sub cached_obj_file {
+    my $self = shift;
+    return $self->file_to_cache_sub->(@_);
+}
 
 sub parse {
     my ($self, @files) = @_;
@@ -211,39 +239,144 @@ sub parse {
     my $dtype = $self->dtype;
     foreach my $file (@files) {
         $self->file($file);
+        #printf STDERR "parsing: $file %d\n", $self->use_cache;
+
+        if ($self->use_cache) {
+            my $cached_obj_file = $self->cached_obj_file($file);
+            my $reparse;
+            if (-f $cached_obj_file) {
+                my @stat1 = lstat($file);
+                my @stat2 = lstat($cached_obj_file);
+                my $t1 = $stat1[9];
+                my $t2 = $stat2[9];
+                if ($t1 >= $t2) {
+                    $reparse = 1;
+                }
+                else {
+                    $reparse = 0;
+                }
+            }
+            else {
+                $reparse = 1;
+            }
+
+            if ($reparse) {
+                # make/remake cache
+                my $hclass = "GO::Handlers::obj_storable";
+                $self->load_module($hclass);
+                my $cache_handler =
+                  $hclass->new;
+                $self->use_cache(0);
+                my $orig_handler = $self->handler;
+                $self->handler($cache_handler);
+                $cache_handler->file($cached_obj_file);
+                $self->parse($file);
+                my $g = $cache_handler->graph;
+                $self->use_cache(1);
+                my $p2 = GO::Parser->new({
+                                          format=>'GO::Parsers::obj_emitter'});
+                $p2->handler($orig_handler);
+                # this is the only state we need to copy across
+                if ($self->can('xslt')) {
+                    $p2->xslt($self->xslt);
+                }
+                $p2->emit_graph($g);
+            }
+            else {
+                # use cache
+                my $p2 = GO::Parser->new({
+                                          format=>'obj_storable'});
+                $p2->handler($self->handler);
+                # this is the only state we need to copy across
+                if ($self->can('xslt')) {
+                    $p2->xslt($self->xslt);
+                }
+                $p2->parse_file($cached_obj_file);
+            }
+            next;
+        }
 
         # check for XSL transform
         if ($self->can('xslt') && $self->xslt) {
+            my $xf = $self->xslt;
+            if (!-f $xf) {
+                if (!$ENV{GO_ROOT}) {
+                    $self->throw("Env Var GO_ROOT not set!");
+                }
+                $xf = "$ENV{GO_ROOT}/xml/xsl/$xf.xsl";
+            }
+            if (!-f $xf) {
+                $self->throw("No such xsl: $xf OR ".$self->xslt);
+            }
 
-            # we want to pass the XML stream generated via
-            # the parse to an XSL transform. We will do this
-            # by lauching an external process to parse the file
-            # and pipe this through an xsl transformation, like this
-            #   go2xml <file> | go-apply-xslt <xsltfile> -
-            # then parse the results as XML and pass them directly to
-            # the handler
+            # first parse input file to intermediate xml
+            my $file1 = _make_temp_filename($file, "-1.xml");
+            my $handler = $self->handler;
+            my $outhandler1 =
+              Data::Stag->getformathandler("xml");
+            $outhandler1->file($file1);
+            $self->handler($outhandler1);
+            $self->SUPER::parse($file);
+            $self->handler->finish;
 
-            my $xslt = $self->xslt;
-            my $fmt_arg = '';
-            my $err_arg = '';
-            my $errf = "$$.err.xml";
-            if ($dtype) {
-                $fmt_arg = " -p $dtype";
+            # transform intermediate xml using XSLT
+            my $file2 = _make_temp_filename($file, "-2.xml");
+            if (0) {
+                # dynamic load
+                require "XML/LibXSLT.pm";
+                my $xslt = XML::LibXSLT->new;
+                my $ss = $xslt->parse_stylesheet_file($xf);
+                my $results = $ss->transform_file($file1);
+                unlink($file1);
             }
-            if ($self->errhandler) {
-                $err_arg = " -e $errf";
+            # $results contains the post-xslt XML doc;
+            # we either want to write this directly, or
+            # pass it to a handler
+
+            if ($handler->isa("Data::Stag::XMLWriter")) {
+                # WRITE DIRECTLY:
+                # if the final goal is XML, then write this
+                # directly
+                if ($handler->file) {
+                    # $ss->output_file($results,$handler->file);
+                    xsltproc($xf,$file1,$handler->file);
+                } else {
+                    my $fh = $handler->fh;
+                    if (!$fh) {
+                        $fh = \*STDOUT;
+                        xsltproc($xf,$file1);
+                    }
+                    else {
+                        xsltproc($xf,$file1,$file2);
+                        my $infh = FileHandle->new($file2) || die "cannot open $file2";
+                        while (<$infh>) {print $fh, $_}
+                        unlink($file2);
+                    }
+                    #$ss->output_fh($results,$handler->fh);
+                }
+            } else {
+                # PASS TO HANDLER:
+                # we need to do another transform, in perl.
+                # 
+                # write $results of stylesheet transform
+                #$ss->output_file($results,$file2);
+                xsltproc($xf,$file1,$file2);
+                
+                # clear memory
+                #$ss=undef;
+                #$xslt=undef;
+                #$results=undef;
+
+                # we pass the final XML to the handler
+                my $load_parser = new GO::Parser ({format=>'obo_xml'});
+                $load_parser->handler($handler);
+                $load_parser->errhandler($self->errhandler);
+                $load_parser->parse($file2);
+                unlink($file2);
             }
-            my $cmd = "go2xml $fmt_arg $err_arg $file | go-apply-xslt $xslt -";
-            #print STDERR "CMD: $cmd\n";
-            my $fh = FileHandle->new("$cmd |") || die("cannot open $cmd");
-            my $load_parser = new GO::Parser ({format=>'obo_xml'});
-            $load_parser->handler($self->handler);
-            $load_parser->parse_fh($fh);
-            if ($err_arg) {
-                my $err_parser = new GO::Parser ({format=>'obo_xml'});
-                $err_parser->handler($self->errhandler);
-                $err_parser->parse($errf);
-            }
+
+            # restore to previous state
+            $self->handler($handler);
         } else {
             # no XSL transform - perform parse as normal
             # (use Data::Stag superclass)
@@ -252,11 +385,99 @@ sub parse {
     }
 }
 
+# applies XSLT and removes input file
+sub xsltproc {
+    my ($xf,$inf,$outf) = @_;
+    my $cmd = "xsltproc $xf $inf";
+    if ($outf) {
+        $cmd .= " > $outf";
+    }
+    my $err = system($cmd);
+    unlink($inf);
+    if ($err) {
+        confess("problem running: $cmd");
+    }
+    return;
+}
+
+sub _make_temp_filename {
+    my ($base, $suffix) = @_;
+    $base =~ s/.*\///;
+    return "TMP.$$.$base$suffix";
+}
+
+=head2 litemode
+
+  Usage   - $p->litemode(1)
+  Returns -
+  Args    - bool
+
+when set, parser will only throw the following events:
+
+id|name|is_a|relationship|namespace
+
+(optimisation for fast parsing)
+
+=cut
+
 sub litemode {
     my $self = shift;
     $self->{_litemode} = shift if @_;
     return $self->{_litemode};
 }
+
+
+=head2 acc2name_h
+
+  Usage   - $n = $p->acc2name_h->{'GO:0003673'}
+  Returns - hashref
+  Args    - hashref [optional]
+
+gets/sets a hash mapping IDs to names
+
+this will be automatically set by an ontology parser
+
+a non-ontology parser will use this index to verify the parsed data
+(see $p->acc_not_found($id), below)
+
+=cut
+
+sub acc2name_h {
+    my $self = shift;
+    $self->{_acc2name_h} = shift if @_;
+    $self->{_acc2name_h} = {} 
+      unless $self->{_acc2name_h};
+    return $self->{_acc2name_h};
+}
+
+
+=head2 acc_not_found
+
+  Usage   - if ($p->acc_not_found($go_id)) { warn("$go_id not known") }
+  Returns - bool
+  Args    - acc string
+
+uses acc2name_h - if this hash mapping has been created AND the acc is
+not in the hash, THEN it is considered not found
+
+This is useful for non-ontology parsers (xref_parser, go_assoc_parser)
+to check whether a referenced ID is actually present in the ontology
+
+note that if acc2name_h has not been created, then accs cannot be
+considered not-found, and this will always return 0/false
+
+=cut
+
+sub acc_not_found {
+    my $self = shift;
+    my $acc = shift;
+    my $h = $self->acc2name_h;
+    if (scalar(keys %$h) && !$h->{$acc}) {
+        return 1;
+    }
+    return 0;
+}
+
 
 sub dtd {
     undef;

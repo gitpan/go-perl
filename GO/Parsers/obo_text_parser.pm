@@ -1,4 +1,4 @@
-# $Id: obo_text_parser.pm,v 1.14 2004/11/25 18:57:28 cmungall Exp $
+# $Id: obo_text_parser.pm,v 1.21 2005/04/19 04:35:50 cmungall Exp $
 #
 #
 # see also - http://www.geneontology.org
@@ -50,8 +50,13 @@ sub parse_fh {
     my $in_hdr = 1;
     my $is_root = 1; # default
     my $namespace_set;
-    my $namespace = $self->force_namespace;
-    
+    my $id;
+    my $namespace = $self->force_namespace; # default
+    my $force_namespace = $self->force_namespace;
+    my $usc = $self->replace_underscore;
+    my %id_remap_h = ();
+    my $default_id_prefix;
+
     while(<$fh>) {
 	chomp;
 
@@ -71,10 +76,14 @@ sub parse_fh {
         s/^\s+//;
         s/\s+$//;
 	next unless $_;
-        next if $litemode && $_ !~ /^(\[|id:|name:|is_a:|relationship:)/;
+        next if ($litemode && $_ !~ /^(\[|id:|name:|is_a:|relationship:|namespace:|is_obsolete:)/ && !$in_hdr);
 	if (/^\[(\w+)\]\s*(.*)/) { # new stanza
+
+            # we are at the beginning of a new stanza
+            # reset everything and make sure everything from
+            # previous stanza is exported
+
 	    my $stanza = lc($1);
-            $is_root = 0 unless $stanza eq 'term';
 	    my $rest = $2;
 	    if ($in_hdr) {
 		$in_hdr = 0;
@@ -83,27 +92,60 @@ sub parse_fh {
 	    else {
                 if (!$namespace_set) {
                     if (!$namespace) {
-                        $self->parse_err("missing namespace!");
+                        $self->parse_err("missing namespace for ID: $id");
                     }
                     else {
                         $self->event(NAMESPACE, $namespace);
                     }
                 }
                 $self->event(IS_ROOT,1) if $is_root;
-                $is_root = 1; # assume root by default
+                $is_root = 1; # assume root by default; override if parents found
                 $namespace_set = 0;
 		$self->end_event;
 	    }
             $is_root = 0 unless $stanza eq 'term';
 	    $self->start_event($stanza);
+            $id = undef;
 	}
         elsif ($in_hdr) {
+
+            # we are in the header section
+
             if (/^([\w\-]+)\:\s*(.*)/) {  # tag-val pair
                 my ($tag, $val) = ($1,$2);
+                if ($tag eq 'subsetdef') {
+                    if ($val =~ /(\S+)\s+(.*)/) {
+                        my $subset_id = $1;
+                        $val = $2;
+                        my ($subset_name, $parts) =
+                          extract_qstr($val);
+                        $val =
+                          [[ID,$subset_id],
+                           [NAME,$subset_name],
+                           map {dbxref($_)} @$parts];
+                    }
+                    else {
+                        $self->parse_err("subsetdef: expect ID \"NAME\", got: $val");
+                    }
+                }
                 $self->event($tag=>$val);
                 if ($tag eq 'default-namespace') {
                     $namespace = $val
                       unless $namespace;
+                }
+                if ($tag eq 'id-mapping') {
+                    if ($val =~ /(\S+)\s+(.*)/) {
+                        if ($id_remap_h{$1}) {
+                            $self->parse_err("remapping $1 to $2");
+                        }
+                        $id_remap_h{$1} = $2;
+                    }
+                    else {
+                        $self->parse_err("id-mapping requires two columns");
+                    }
+                }
+                if ($tag eq 'default-id-prefix') {
+                    $default_id_prefix = $val;
                 }
             }
             else {
@@ -116,8 +158,32 @@ sub parse_fh {
             ($val, $qh) = extract_quals($val);
 	    my $val2 = $val;
 	    $val2 =~ s/\\,/,/g;
-	    if ($tag eq RELATIONSHIP) {
+            if ($tag eq ID) {
+                if ($id_remap_h{$val}) {
+                    $val = $id_remap_h{$val};
+                }
+                if ($val !~ /:/) {
+                    if ($default_id_prefix) {
+                        $val = "$default_id_prefix:$val";
+                    }
+                }
+            }
+            elsif ($tag eq NAME) {
+                # replace underscore in name
+                if ($usc) {
+                    $val =~ s/_/$usc/g;
+                }
+            }
+	    elsif ($tag eq RELATIONSHIP) {
 		my ($type, $id) = split(' ', $val2);
+                if ($id_remap_h{$type}) {
+                    $type = $id_remap_h{$type};
+                }
+                if ($type !~ /:/) {
+                    if ($default_id_prefix) {
+                        $type = "$default_id_prefix:$type";
+                    }
+                }
 		$val = [[TYPE,$type],[TO,$id]];
 	    }
 	    elsif ($tag eq INTERSECTION_OF) {
@@ -132,6 +198,16 @@ sub parse_fh {
 		my $dbxref = dbxref($val);
 		$val = $dbxref->[1];
 	    }
+            elsif ($tag eq NAMESPACE) {
+                if ($force_namespace) {
+                    # override whatever namespace was provided
+                    $val = $force_namespace;
+                }
+                else {
+                    # do nothing - we will export later
+                }
+                $namespace_set = $val;
+            }
 	    elsif ($tag eq DEF) {
 		my ($defstr, $parts) =
 		  extract_qstr($val);
@@ -204,8 +280,16 @@ sub parse_fh {
             if ($tag eq IS_OBSOLETE && $val) {
                 $is_root = 0;
             }
-	    if ($tag eq NAMESPACE) {
-                $namespace_set = $val;
+	    if ($tag eq ID) {
+                $id = $val;
+	    }
+	    if ($tag eq NAME) {
+                if (!$id) {
+                    $self->parse_err("missing id!")
+                }
+                else {
+                    $self->acc2name_h->{$id} = $val;
+                }
 	    }
 	}
 	else {
@@ -216,7 +300,7 @@ sub parse_fh {
     # duplicated code! check final event
     if (!$namespace_set) {
         if (!$namespace) {
-            $self->parse_err("missing namespace!");
+            $self->parse_err("missing namespace for ID: $id");
         }
         else {
             $self->event(NAMESPACE, $namespace);

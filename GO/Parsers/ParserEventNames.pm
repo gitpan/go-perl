@@ -44,6 +44,7 @@ use constant DEF => 'def';
 use constant DEFSTR => 'defstr';
 use constant IS_ROOT => 'is_root';
 use constant IS_OBSOLETE => 'is_obsolete';
+use constant BUILTIN => 'builtin';
 use constant IS_A => 'is_a';
 use constant RELATIONSHIP => 'relationship';
 use constant INTERSECTION_OF => 'intersection_of';
@@ -111,6 +112,7 @@ use constant DBXREFS => 'dbxrefs';
              IS_OBSOLETE 
              IS_ROOT 
              IS_A 
+             BUILTIN
              RELATIONSHIP 
                TO 
                TYPE 

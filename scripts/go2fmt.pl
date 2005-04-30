@@ -8,12 +8,17 @@ use FileHandle;
 use Data::Stag;
 use GO::Parser;
 
-my $opt = {};
+my $opt = {writer=>'xml'};
 GetOptions($opt,
 	   "help|h",
+           "obo_set",
+           "litemode|l",
            "format|p=s",
+           "output|o|file=s",
            "datatype|t=s",
+           "xslt|xsl|x=s",
 	   "err|e=s",
+           "use_cache",
            "handler_args|a=s%",
            "handler|w|writer=s",
 	  );
@@ -22,7 +27,6 @@ if ($opt->{help}) {
     system("perldoc $0");
     exit;
 }
-
 
 my $errf = $opt->{err};
 my $errhandler = Data::Stag->getformathandler('xml');
@@ -33,8 +37,35 @@ else {
     $errhandler->fh(\*STDERR);
 }
 
-my $p = GO::Parser->new;
-my @files = $p->normalize_files(@ARGV);
+# create an initial parser object; we won't actually use this
+# to parse; we use this to get the auto-created handler object
+my $initial_parser = GO::Parser->new(%$opt);
+
+# user will specify handler option which makes handler object
+my $main_handler = $initial_parser->handler;
+
+# some handlers will do something directly (eg make objects or
+# write xml); others will go through a stag transform, and
+# then onto the user-specified handler
+if ($main_handler->can("is_transform") &&
+    $main_handler->is_transform) {
+    # create handler chain; the inner handler is what the user
+    # specifies (eg xml output)
+    my $chain_handler =
+      Data::Stag->chainhandlers([$main_handler->CONSUMES],
+                                $main_handler,
+                                'xml');
+    # wrap initial handler inside chained handler
+    $main_handler = $chain_handler;
+}
+
+# unzip etc
+my @files = $initial_parser->normalize_files(@ARGV);
+my $in_set = 0;
+if ($opt->{obo_set} || @files >1) {
+    $main_handler->start_event('obo_set');
+    $in_set = 1;
+}
 while (my $fn = shift @files) {
     my %h = %$opt;
     my $fmt;
@@ -45,20 +76,19 @@ while (my $fn = shift @files) {
         $h{format} = $fmt;
     }
     my $parser = new GO::Parser(%h);
+    $parser->handler($main_handler);
+    $parser->litemode(1) if $opt->{litemode};
+    $parser->use_cache(1) if $opt->{use_cache};
     $parser->errhandler($errhandler);
-    if ($parser->handler->can("is_transform") &&
-        $parser->handler->is_transform) {
-        my $inner_handler = $parser->handler;
-        my $handler =
-          Data::Stag->chainhandlers([$parser->handler->CONSUMES],
-                                    $inner_handler,
-                                    'xml');
-        $parser->handler($handler);
+    if ($opt->{xslt}) {
+        my $xf = $opt->{xslt};
+        $parser->xslt($xf);
     }
     $parser->parse($fn);
     $parser->handler->export if $parser->handler->can("export");
 }
 $errhandler->finish;
+$main_handler->finish;
 exit 0;
 
 __END__
@@ -96,6 +126,25 @@ based on file suffix. See below for formats
 =head3 -w|writer FORMAT
 
 format for output - see below for list
+
+=head2 -use_cache
+
+If this switch is specified, then caching mode is turned on.
+
+With caching mode, the first time you parse a file, then an additional
+file will be exported in a special format that is fast to parse. This
+file will have the same filename as the original file, except it will
+have the ".cache" suffix.
+
+The next time you parse the file, this program will automatically
+check for the existence of the ".cache" file. If it exists, and is
+more recent than the file you specified, this is parsed instead. If it
+does not exist, it is rebuilt.
+
+This will bring a speed improvement for b<some> of the output formats
+below (such as pathlist). Most output formats work with event-based
+parsing, so caching the object brings no benefit and will in fact be
+slower than bypassing the cache
 
 =head2 FORMATS
 
@@ -141,7 +190,9 @@ This is the XML version of the OBO flat file format above
 
 =item prolog
 
-creates a prolog database file (for use with the OBO project)
+prolog facts - you will need a prolog compiler/interpreter to use
+these. You can reason over these facts using Obol or the forthcoming
+Bio-LP project
 
 =item tbl
 
@@ -155,9 +206,25 @@ can be used on both ontology files and association files
 
 shows all paths to the root
 
+=item owl
+
+OWL format (default: OWL-DL)
+
+OWL is a W3C standard format for ontologies
+
+You will need the XSL files from the full go-dev distribution to run
+this; see the XML section in L<http://www.godatabase.org/dev>
+
 =item obj_yaml
 
 a YAML representation of a GO::Model::Graph object
+
+=item obj_storable
+
+A dump of the perl L<GO::Model::Graph> object. You need L<Storable>
+from CPAN for this to work. This is intended to cache objects on the
+filesystem, for fast access. The obj_storable representation may not
+be portable
 
 =item text_html
 

@@ -1,4 +1,4 @@
-# $Id: go_ont_parser.pm,v 1.8 2004/11/24 02:28:02 cmungall Exp $
+# $Id: go_ont_parser.pm,v 1.16 2005/03/22 22:38:32 cmungall Exp $
 #
 #
 # see also - http://www.geneontology.org
@@ -69,33 +69,78 @@ sub dtd {
     'go_ont-parser-events.dtd';
 }
 
+sub regesc {
+    my $code = shift;
+    if ($code eq '|') {
+        $code = '\|';
+    }
+    if ($code eq '*') {
+        $code = '\*';
+    }
+    if ($code eq '?') {
+        $code = '\?';
+    }
+    $code;
+}
+
+sub reln_regexp {
+    join("|", map {" ".regesc($_)." "} keys %{shift || {}});
+}
+
 sub parse_fh {
     my ($self, $fh) = @_;
 
     my $file = $self->file;
 
     my $is_go;
-    my @edgechars = qw(% < ~);
-    my $reln_regexp = join("|", map {" $_ "} @edgechars);
+    my %typemap =
+      ('$'=>'is_a',
+       '%'=>'is_a',
+       '<'=>'part_of',
+       '~'=>'derives_from',
+       );
+    my $reln_regexp = reln_regexp(\%typemap);
     my $lnum = 0;
     my @stack = ();
     my $obs_depth;
 
+    my $usc = $self->replace_underscore;
     $self->start_event(OBO);
     my %rtypenameh = ();
     $self->fire_source_event($file);
     $self->handler->{ontology_type} = 
-      $self->force_namespace || 'root';
+      $self->force_namespace;
     my $root_id;
 
   PARSELINE:
-    while (my $line = <$fh>) {
+    while (<$fh>) {
+        # UNICODE causes problems for XML and DB
+        # delete 8th bit
+        tr [\200-\377]
+          [\000-\177];   # see 'man perlop', section on tr/
+        # weird ascii characters should be excluded
+        tr/\0-\10//d;   # remove weird characters; ascii 0-8
+                        # preserve \11 (9 - tab) and \12 (10-linefeed)
+        tr/\13\14//d;   # remove weird characters; 11,12
+                        # preserve \15 (13 - carriage return)
+        tr/\16-\37//d;  # remove 14-31 (all rest before space)
+        tr/\177//d;     # remove DEL character
+        my $line = $_;
 	$line =~ s/\r//g;
 	chomp $line;
 	$line =~ s/\s+$//;
 	++$lnum;
         $self->line($line);
         $self->line_no($lnum);
+        if ($line =~ /^\!type:\s*(\S+)\s+(\S+)/) {
+            my ($code, $name) = ($1, $2);
+            $name =~ s/\s+/_/g;
+            $typemap{$code} = $name
+              unless $code eq '%';
+            #$code = '\\'.$code;
+            $reln_regexp = reln_regexp(\%typemap);
+            next;
+        }
 	next if $line =~ /^\s*\!/;   # comment
 	next if $line eq '\$';        # 
 	next if $line eq '';        # 
@@ -123,12 +168,12 @@ sub parse_fh {
 
         my $rchar;
         if ($body =~ /^(\@\w+\@)(.*)/) {
-            $rchar = $self->typemap($1);
+            $rchar = $self->typemap($1,\%typemap);
             $body = $2;
 	    $reln_regexp = ' \@\w+\@ ';
         }
 	else {
-            $rchar = $self->typemap(substr($body, 0, 1));
+            $rchar = $self->typemap(substr($body, 0, 1),\%typemap);
             $body = substr($body, 1);
         }
         # +++++++++++++++++++++++++++++++++
@@ -141,6 +186,9 @@ sub parse_fh {
             my ($name, @xrefs) =
               split(/\s*;\s+/, $part);
             $name = $self->unescapego($name);
+            if ($usc) {
+                $name =~ s/_/$usc/g;
+            }
             if ($name =~ /^obsolete/i && $i==0) {
                 $obs_depth = $indent;
             }
@@ -160,13 +208,16 @@ sub parse_fh {
                 $self->handler->{ontology_type} = $name
                   unless $self->force_namespace;
             }
+            elsif (!$self->handler->{ontology_type}) {
+                $self->handler->{ontology_type} = $name;
+            }
 	    else {
 	    }
 
             my $pxrefstr = shift @xrefs;
             if (!$pxrefstr) {
 		$pxrefstr = '';
-                $self->parse_err("no primary xref");
+                $self->parse_err("no ID");
                 next PARSELINE;
             }
             # get the GO id for this line
@@ -178,7 +229,7 @@ sub parse_fh {
                     my $msg = "\"$pxref\" doesn't look valid";
                     $self->parse_err($msg);
                 }
-                my $a2t = $self->acc2termname;
+                my $a2t = $self->acc2name_h;
                 my $prevname = $a2t->{$currxref};
                 if ($prevname &&
                     $prevname ne $name) {
@@ -192,6 +243,7 @@ sub parse_fh {
 		}
                 $a2t->{$currxref} = $name;
 		$root_id = $currxref if !$indent;
+                $a2t->{$currxref} = $name;
 		$self->start_event(TERM);
                 $self->event(ID, $currxref);
                 $self->event(NAME, $name);
@@ -242,7 +294,7 @@ sub parse_fh {
                 # have redundant info,
                 # but the relationship
                 # part is useful
-                my $rchar = $self->typemap($parts[$i-1]);
+                my $rchar = $self->typemap($parts[$i-1],\%typemap);
 		if (!$pxref) {
 		    $self->parse_err("problem with $name $currxref: rel $rchar has no parent/object");
 		} else {
@@ -279,8 +331,6 @@ sub parse_fh {
     }
     $self->pop_stack_to_depth(0);
     $self->parsed_ontology(1);
-    #    use Data::Dumper;
-    #    print Dumper $self;
 }
 
 sub relationship_event {
@@ -303,17 +353,22 @@ sub relationship_event {
 sub typemap {
     my $self = shift;
     my $ch = shift;
+    my %typemap = %{shift || {}};
     $ch =~ s/^ *//g;
     $ch =~ s/ *$//g;
-    if ($ch =~ /^\@(\w+)\@/) {
+    if ($typemap{$ch}) {
+        $ch = $typemap{$ch};
+    }
+    elsif ($typemap{'\\'.$ch}) {
+        $ch = $typemap{$ch};
+    }
+    elsif ($ch =~ /^\@(\w+)\@/) {
 	$ch = lc($1);
+    }
+    else {
     }
     $ch =~ s/isa/is_a/;
     $ch =~ s/partof/part_of/;
-    $ch =~ s/\$/is_a/;
-    $ch =~ s/\%/is_a/;
-    $ch =~ s/\</part_of/;
-    $ch =~ s/\~/develops_from/;
     $ch;
 }
 

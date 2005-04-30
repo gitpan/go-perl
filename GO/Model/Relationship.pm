@@ -1,4 +1,4 @@
-# $Id: Relationship.pm,v 1.3 2004/11/24 02:28:02 cmungall Exp $
+# $Id: Relationship.pm,v 1.4 2005/04/19 04:35:50 cmungall Exp $
 #
 # This GO module is maintained by Chris Mungall <cjm@fruitfly.org>
 #
@@ -188,7 +188,7 @@ sub type {
     if (@_) {
 	my $type = shift;
 	if ($type) {
-            $self->{type} = lc($type);
+            $self->{type} = $type;
         }
     }
     return $self->{type} || "unknown";

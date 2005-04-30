@@ -1,4 +1,4 @@
-# $Id: owl_parser.pm,v 1.2 2004/11/24 02:28:02 cmungall Exp $
+# $Id: owl_parser.pm,v 1.3 2005/04/19 04:35:50 cmungall Exp $
 #
 #
 # see also - http://www.geneontology.org
@@ -22,14 +22,14 @@ package GO::Parsers::owl_parser;
 
 this parser does a direct translation of XML to events, passed on to the handler
 
-use GO::Handlers::owl_to_obo_handler to transform this stream into OBO-XML
-
 =head1 AUTHOR
 
 =cut
 
 use Exporter;
-use base qw(Data::Stag::XMLParser);
+use base qw(GO::Parsers::base_parser Data::Stag::XMLParser);
+
+sub xslt { 'owl_to_oboxml' }
 
 
 1;

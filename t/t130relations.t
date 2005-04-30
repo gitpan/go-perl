@@ -4,7 +4,7 @@ use lib '.';
 BEGIN {
     eval { require Test; };
     use Test;    
-    plan tests => 4;
+    plan tests => 5;
 }
 # All tests must be run from the software directory;
 # make sure we are getting the modules from here:
@@ -21,16 +21,15 @@ use GO::ObjCache;
 
 # ------------------------
 
-my $parser = new GO::Parser ({format=>'go_ont',
-			      handler=>'obj'});
+my $parser = new GO::Parser ({handler=>'obj'});
 my $graph = $parser->handler->g;
 ok(1);
-$parser->parse ("./t/data/test-function.dat");
-ok($parser->acc2name_h->{'GO:0003677'} = 'DNA binding');
-
-# lets check we got stuff
-
-#print $graph->dump;
-my $t = $graph->get_term("GO:0003677");
-ok($t);
+$parser->parse ("./t/data/relationship.obo");
+$parser->parse ("./t/data/test-nucleolar.obo");
+my $t = $graph->get_term("GO:0007569");
+ok($t->name, 'cell aging');
+my $parents = $graph->get_parent_terms_by_type($t->acc,'OBO_REL:part_of');
+ok(@$parents == 1);
+my $t2 = shift @$parents;
+ok($t2->name eq 'cell death');
 ok(1);

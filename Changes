@@ -38,3 +38,20 @@ VERSION 0.02
 2005-04-16      - [cjm] fixed subtle obo_text_parser bug
                          is_root was not being set if the root term      
                          was immediately followed by a Typedef stanza
+
+2005-05-20      - [cjm] allowed unsetting of $term->synonym_list
+                - [cjm] new scripts
+                         go-show-assocs-by-node.pl
+                         go-apply-xslt
+2005-05-25      - [cjm] xslt processing: behaviour unchanged for when
+                        GO_ROOT is set; if GO_ROOT is not set, then
+                        the install directory (eg %INC{GO/..}) is checked
+                        for the xsl directory. This makes things easier
+                        for users who wish to use go-perl and the xslts
+                        without downloading and installing all of go-dev
+                        This affects:
+                          go-apply-xslt
+                          GO::Parsers::base_parser
+
+2005-06-29      - [cjm] now accepts obo1.2 format synonyms
+                        accepts obo1.2 xref tag (maps to xref_analog in xml)

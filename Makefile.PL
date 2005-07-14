@@ -86,13 +86,16 @@ WriteMakefile(
 	      'VERSION_FROM' => "go-perl.pod",
 	      'PREREQ_PM'    => {
 				 'Data::Stag'         => "0.07",
-                                 #'Bio::Seq'           => 0,
                                  'Data::Dumper'           => 0,
-                                 #'Digest::MD5'         => 0,
 				},
 #               PL_FILES	=> { 'doc/makedoc.PL' => ['bioscripts.pod','biodatabases.pod','biodesign.pod','bioperl.pod'] },
 	      'EXE_FILES'    => [
                                  qw(
+                                    scripts/go-apply-xslt
+                                    scripts/go-dag-summary.pl
+                                    scripts/go-show-assocs-by-node.pl
+                                    scripts/go-show-paths-to-root.pl
+                                    scripts/go-filter-subset.pl
                                     scripts/go-export-graph.pl
                                     scripts/go-export-prolog.pl
                                     scripts/go2chadoxml
@@ -126,7 +129,6 @@ WriteMakefile(
 		       },
 	     );
 
-
 sub MY::postamble {
   qq{
 
@@ -135,6 +137,27 @@ pod :: \
 
 pod.tar.gz :: pod\
 	tar cvf pod.tar pod && gzip pod.tar
+
+# INSTALL .xsl FILES AS PERL MODULES
+# this is only required by the go-perl developer to make
+# a go-perl dist that includes the XSLs
+
+# directory for source XSLs; this only makes sense if go-perl
+# is a subdir of go-dev
+XSL_SRC_DIR = ../xml/xsl
+
+# xsls which go-perl can use
+XSL = chadoxml_to_oboxml oboxml_filter oboxml_to_chadoxml oboxml_to_dig oboxml_to_godb_prestore oboxml_to_obotext oboxml_to_owl oboxml_to_racer owl_to_oboxml oboxml_to_summary_table ipr_to_oboxml
+
+XSL_FILES = \$(patsubst %,\$(XSL_SRC_DIR)/%.xsl,\$(XSL))
+
+# this dir should always be made before a distribution; the end-user
+# installer never needs to build this, their distribution will come
+# with these files. When a 'make install' is performed, the xsls will
+# go in the location where perl modules usually go.
+# we re-run 'make' at the end of this to rebuild TO_INST_PM in Makefile
+GO/xsl :: \$(XSL_FILES)
+	(test -d GO/xsl || mkdir GO/xsl) && cp \$(XSL_FILES) GO/xsl && make
 
   };  
 }

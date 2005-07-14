@@ -1,4 +1,4 @@
-# $Id: ObjCache.pm,v 1.2 2004/11/24 02:27:59 cmungall Exp $
+# $Id: ObjCache.pm,v 1.3 2005/05/20 18:46:57 cmungall Exp $
 #
 # This GO module is maintained by Chris Mungall <cjm@fruitfly.org>
 #
@@ -14,6 +14,9 @@ package GO::ObjCache;
   GO::ObjCache;
 
 =head1 DESCRIPTION
+
+This is a kind of L<GO::ObjFactory> - you should not need to use this
+method directly
 
 =cut
 

@@ -7,6 +7,11 @@ You need xsltproc (part of libxslt) for this.
 
 See http://www.godatabase.org/dev/xml/xsl
 
+[This script can easily be modified so that other xslt processors can
+be used; eg java Xalan. I believe xsltproc to be the fastest. If you would
+like this script to be extended to use a different xslt processor, please
+email the gmod-ontol-sw-devel list]
+
 EOM
 ;
     exit 1;
@@ -28,16 +33,27 @@ if (!$xsl) {
 if (!@files) {
   @files = ('-');
 }
+
+# if GO_ROOT is set then this specifies the location of the xslt dir
+#  if it is not set, assume we are using an installed version of go-perl,
+#  in which case, the xslts will be located along with the perl modules
+my $xslt_file;
 my $GO_ROOT = $ENV{GO_ROOT};
-if (!$GO_ROOT) {
-    $GO_ROOT = `dirname $0`;
-    chomp $GO_ROOT;
-    my @parts = split('/',$GO_ROOT);
-    pop @parts;
-    pop @parts;
-    $GO_ROOT = join('/',@parts);
+if ($GO_ROOT) {
+    # env var takes precedence;
+    # developers should use this
+    $xslt_file = "$GO_ROOT/xml/xsl/$xsl.xsl";
 }
-my $xslt_file = "$GO_ROOT/xml/xsl/$xsl.xsl";
+
+# default location is with perl modules
+if (!$xslt_file || !-f $xslt_file) {
+    # user-mode; xsl will be wherever the GO modules are installed
+    require "GO/Parser.pm";
+    my $dir = $INC{'GO/Parser.pm'};
+    $dir =~ s/Parser\.pm/xsl/;
+    $xslt_file = "$dir/$xsl.xsl";
+}
+
 if (!-f $xslt_file) {
     print <<EOM
 I expected to find a file: "$xslt_file"

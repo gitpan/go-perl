@@ -29,7 +29,7 @@ Try typing the following:
 
 ----------
 perl -MCPAN -e shell
-install go-perl
+install GO::Parser
 ----------
 
 If this is the first time using the CPAN installer, you will be asked

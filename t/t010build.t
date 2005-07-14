@@ -4,7 +4,7 @@ use lib '.';
 BEGIN {
     eval { require Test; };
     use Test;    
-    plan tests => 4;
+    plan tests => 6;
 }
 # All tests must be run from the software directory;
 # make sure we are getting the modules from here:
@@ -34,3 +34,9 @@ ok($parser->acc2name_h->{'GO:0003677'} = 'DNA binding');
 my $t = $graph->get_term("GO:0003677");
 ok($t);
 ok(1);
+$t->add_synonym_by_type(foo=>"abc");
+$t->add_synonym_by_type(foo=>"def");
+$t->add_synonym_by_type(goo=>"xyz");
+ok(scalar(@{$t->synonym_list}),3);
+$t->synonym_list([]);
+ok(scalar(@{$t->synonym_list}),0);

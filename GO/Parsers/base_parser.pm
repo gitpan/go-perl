@@ -1,4 +1,4 @@
-# $Id: base_parser.pm,v 1.12 2005/03/22 22:38:32 cmungall Exp $
+# $Id: base_parser.pm,v 1.13 2005/05/25 18:39:58 cmungall Exp $
 #
 #
 # see also - http://www.geneontology.org
@@ -298,15 +298,31 @@ sub parse {
 
         # check for XSL transform
         if ($self->can('xslt') && $self->xslt) {
-            my $xf = $self->xslt;
-            if (!-f $xf) {
-                if (!$ENV{GO_ROOT}) {
-                    $self->throw("Env Var GO_ROOT not set!");
+            my $xsl = $self->xslt;
+            my $xslt_file = $xsl;
+
+            if (!-f $xslt_file) {
+                # if GO_ROOT is set then this specifies the location of the xslt dir
+                #  if it is not set, assume we are using an installed version of go-perl,
+                #  in which case, the xslts will be located along with the perl modules
+                my $GO_ROOT = $ENV{GO_ROOT};
+                if ($GO_ROOT) {
+                    # env var takes precedence;
+                    # developers should use this
+                    $xslt_file = "$GO_ROOT/xml/xsl/$xsl.xsl";
                 }
-                $xf = "$ENV{GO_ROOT}/xml/xsl/$xf.xsl";
+                
+                # default location is with perl modules
+                if (!$xslt_file || !-f $xslt_file) {
+                    # user-mode; xsl will be wherever the GO modules are installed
+                    require "GO/Parser.pm";
+                    my $dir = $INC{'GO/Parser.pm'};
+                    $dir =~ s/Parser\.pm/xsl/;
+                    $xslt_file = "$dir/$xsl.xsl";
+                }
             }
-            if (!-f $xf) {
-                $self->throw("No such xsl: $xf OR ".$self->xslt);
+            if (!-f $xslt_file) {
+                $self->throw("No such file: $xslt_file OR $xsl");
             }
 
             # first parse input file to intermediate xml
@@ -321,14 +337,6 @@ sub parse {
 
             # transform intermediate xml using XSLT
             my $file2 = _make_temp_filename($file, "-2.xml");
-            if (0) {
-                # dynamic load
-                require "XML/LibXSLT.pm";
-                my $xslt = XML::LibXSLT->new;
-                my $ss = $xslt->parse_stylesheet_file($xf);
-                my $results = $ss->transform_file($file1);
-                unlink($file1);
-            }
             # $results contains the post-xslt XML doc;
             # we either want to write this directly, or
             # pass it to a handler
@@ -339,17 +347,17 @@ sub parse {
                 # directly
                 if ($handler->file) {
                     # $ss->output_file($results,$handler->file);
-                    xsltproc($xf,$file1,$handler->file);
+                    xsltproc($xslt_file,$file1,$handler->file);
                 } else {
                     my $fh = $handler->fh;
                     if (!$fh) {
                         $fh = \*STDOUT;
-                        xsltproc($xf,$file1);
+                        xsltproc($xslt_file,$file1);
                     }
                     else {
-                        xsltproc($xf,$file1,$file2);
+                        xsltproc($xslt_file,$file1,$file2);
                         my $infh = FileHandle->new($file2) || die "cannot open $file2";
-                        while (<$infh>) {print $fh, $_}
+                        while (<$infh>) {print $fh $_}
                         unlink($file2);
                     }
                     #$ss->output_fh($results,$handler->fh);
@@ -360,7 +368,7 @@ sub parse {
                 # 
                 # write $results of stylesheet transform
                 #$ss->output_file($results,$file2);
-                xsltproc($xf,$file1,$file2);
+                xsltproc($xslt_file,$file1,$file2);
                 
                 # clear memory
                 #$ss=undef;

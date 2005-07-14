@@ -14,7 +14,7 @@ GetOptions($opt,
            "obo_set",
            "litemode|l",
            "format|p=s",
-           "output|o|file=s",
+           "output|o=s",
            "datatype|t=s",
            "xslt|xsl|x=s",
 	   "err|e=s",
@@ -58,6 +58,8 @@ if ($main_handler->can("is_transform") &&
     # wrap initial handler inside chained handler
     $main_handler = $chain_handler;
 }
+
+$main_handler->file($opt->{output}) if $opt->{output};
 
 # unzip etc
 my @files = $initial_parser->normalize_files(@ARGV);
@@ -126,6 +128,20 @@ based on file suffix. See below for formats
 =head3 -w|writer FORMAT
 
 format for output - see below for list
+
+=head3 -|xslt XSLT
+
+The name or filename of an XSLT transform
+
+This can either be an absolute path to a file anywhere on the
+filesystem, or it can just be the name of the xslt; eg
+
+  go2fmt.pl -xslt oboxml_to_owl go.obo
+
+If the name is specified, then first of all $GO_ROOT/xml/xsl/*.xsl
+will be searched; if GO_ROOT is not set, then the perl modules dir
+where GO is installed will be searched (the xslts will be installed
+here automatically if you follow the normal install process)
 
 =head2 -use_cache
 

@@ -1,4 +1,4 @@
-# $Id: obj.pm,v 1.13 2005/04/19 04:35:49 cmungall Exp $
+# $Id: obj.pm,v 1.15 2005/05/23 22:10:00 cmungall Exp $
 #
 # This GO module is maintained by Chris Mungall <cjm@fruitfly.org>
 #
@@ -173,7 +173,7 @@ sub stanza {
 #	    $term->add_definition_dbxref($_) foreach @xrefs;
         }
         elsif ($k eq ALT_ID) {
-	    $term->add_synonym($v);
+	    $term->add_alt_id($v);
         }
         elsif ($k eq 'property') {
             # experimental tag!!
@@ -301,7 +301,7 @@ sub dbxref {
 
 sub e_proddb {
     my $self = shift;
-    $self->proddb(shift);
+    $self->proddb(shift->data);
     return;
 }
 

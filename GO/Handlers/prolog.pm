@@ -24,7 +24,7 @@ sub e_typedef {
     my $proptype = 'property';
     my $domain = $typedef->get_domain;
     my $range = $typedef->get_range;
-    if ($range =~ /^xsd:/) {
+    if ($range && $range =~ /^xsd:/) {
         $proptype = 'slot';
     }
     $self->fact($proptype, [$id, $typedef->sget_name]);
@@ -119,7 +119,7 @@ sub export_tags {
         $self->fact('def',[$id, $def->sget_defstr]);
     }
     foreach ($term->get_synonym) {
-        $self->fact('synonym',[$id, $_->findval_scope || '',$_->sget_synonym_text]);
+        $self->fact('synonym',[$id, ($_->sget('@/scope') || ''),$_->sget_synonym_text]);
     }
     foreach ($term->get_xref_analog) {
         $self->fact('class_xref',[$id, sprintf("%s:%s",$_->sget_dbname,$_->sget_acc)]);

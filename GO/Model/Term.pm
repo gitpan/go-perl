@@ -1,4 +1,4 @@
-# $Id: Term.pm,v 1.8 2005/02/11 05:44:56 cmungall Exp $
+# $Id: Term.pm,v 1.13 2005/06/29 18:40:19 sshu Exp $
 #
 # This GO module is maintained by Chris Mungall <cjm@fruitfly.org>
 #
@@ -39,9 +39,10 @@ Represents an Ontology term; the same class is used for process,
 compartment and function
 
 currently, a Term is not aware of its Relationships; to find out how a
-term is related to other terms, use either the GO::AppHandle object or
-a GO::Model::Graph object, which will give you the
-GO::Model::Relationship objects
+term is related to other terms, use the a L<GO::Model::Graph> object,
+which will give you the GO::Model::Relationship objects; for example
+
+  $rels = $graph->get_parent_relationships($term->acc);
 
 =head1 SEE ALSO
 
@@ -57,13 +58,22 @@ or set the attributes. by using the accessor method without any
 arguments gets the value of the attribute. if you pass in an argument,
 then the attribuet will be set according to that argument.
 
-for instance
+for single-valued attributes
 
   # this sets the value of the attribute
   $my_object->attribute_name("my value");
 
   # this gets the value of the attribute
   $my_value = $my_object->attribute_name();
+
+for lists:
+
+  # this sets the values of the attribute
+  $my_object->attribute_name(\@my_values);
+
+  # this gets the values of the attribute
+  $my_values = $my_object->attribute_name();
+
 
 =cut
 
@@ -311,13 +321,15 @@ sub has_synonym {
     return 0;
 }
 
-*add_secondaryid = \&add_synonym;
 
 =head2 add_synonym
 
   Usage   - $term->add_synonym("calcineurin");
+  Usage   - $term->add_synonym(@synonym_strings);
   Returns -
   Args    -
+
+Adds a synonym; loses type information (the synonym type in blank)
 
 =cut
 
@@ -335,18 +347,31 @@ sub add_synonym {
 
 accessor: gets/set list of synonyms [array reference]
 
+each synonym is represented as a string - this method loses synonym
+typing information. If used as a setter, will set the type for each
+synonym to null
+
 =cut
 
 sub synonym_list {
     my $self = shift;
-    #$self->{synonym_list} = shift if @_;
-    #return $self->{synonym_list};
+    if (@_) {
+        my $syns = shift;
+        $self->synonyms_by_type_idx({});
+        $self->add_synonym(@$syns);
+    }
     my $sbt = $self->synonyms_by_type_idx;
     my @syns = 
       map { @{$sbt->{$_} || []} } keys %$sbt;
     return \@syns;
 }
 
+sub synonym_type_list {
+
+    return [keys %{shift->{_synonyms_by_type_idx} || {}}];
+}
+
+# private: lookup table indexed by type, value is syn string arrayref
 sub synonyms_by_type_idx {
     my $self = shift;
     if (@_) {
@@ -379,14 +404,22 @@ sub add_synonym_by_type {
 =head2 synonyms_by_type
 
   Usage   - $synstrs = $term->synonyms_by_type('exact');
-  Returns -
-  Args    -
+  Usage   - $term->synonyms_by_type('exact', \@exact_syns);
+  Returns - arrayref of strings
+  Args    - type string, arrayref of strings [optional]
+
+in getter mode, gets a list of synonyms of a particular type
+
+in setter mode, sets a list of synonyms for a particular type
 
 =cut
 
 sub synonyms_by_type {
     my $self = shift;
     my $type = shift;
+    if (@_) {
+        $self->synonyms_by_type_idx->{$type} = shift;
+    }
     return $self->synonyms_by_type_idx->{$type} || [];
 }
 
@@ -403,10 +436,27 @@ accessor: gets/set list of synonyms [array reference]
 
 sub alt_id_list {
     my $self = shift;
-    my $syns = $self->synonym_list || [];
-    my @ids = grep {/^(\w+):(.+)/} @$syns;
-    return \@ids;
+    if (@_) {
+        $self->add_alt_id(@_);
+    }
+    $self->synonyms_by_type('alt_id');
 }
+
+
+=head2 add_alt_id
+
+  Usage   - $term->add_alt_id('GO:0000001');
+  Returns -
+  Args    - id string, or list of id strings
+
+=cut
+
+sub add_alt_id {
+    my $self = shift;
+    my @alt_ids = @_;
+    $self->add_synonym_by_type('alt_id',$_) foreach @_;
+}
+*add_secondaryid = \&add_alt_id;
 
 
 # DEPCRECATED
@@ -419,6 +469,7 @@ sub add_obsolete {
     return $self->obsolete_list;
 }
 
+# deprecated
 sub obsolete_list {
     my $self = shift;
     while (shift @_) {
@@ -598,6 +649,8 @@ L<GO::Model::Association>
 
 # done by AUTOLOAD
 
+
+
 =head2 add_association
 
   Usage   - $term->add_association($assoc);
@@ -719,8 +772,8 @@ sub n_associations {
 
 =head2 product_list
 
-  Usage   -
-  Returns - GO::Model::GeneProduct listref
+  Usage   - $prods = $term->product_list
+  Returns - L<GO::Model::GeneProduct> listref
   Args    -
 
 Returns a reference to an array of gene products that are attached
@@ -731,7 +784,7 @@ $term->association_list, cache the results, and use the associations
 to build the product list. succeeding calls of product_list to this
 term will hence be faster)
 
-L<GO::Model::GeneProduct>
+See L<GO::Model::GeneProduct>
 
 =cut
 

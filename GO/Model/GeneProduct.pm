@@ -1,4 +1,4 @@
-# $Id: GeneProduct.pm,v 1.6 2005/02/11 05:44:56 cmungall Exp $
+# $Id: GeneProduct.pm,v 1.8 2005/06/29 18:40:19 sshu Exp $
 #
 # This GO module is maintained by Chris Mungall <cjm@fruitfly.org>
 #
@@ -43,7 +43,7 @@ sub _initialize
 
     my $db;
     if ($paramh->{speciesdb}) {
-	($db = $paramh->{speciesdb}) =~ tr/A-Z/a-z/;
+	$db = $paramh->{speciesdb};
     }
     else {
 	$db = $paramh->{xref_dbname};
@@ -262,7 +262,7 @@ sub set_property {
     if (!$self->properties) {
         $self->properties({});
     }
-    if (ref($v)) {
+    if (ref($v) eq 'ARRAY') {
         confess("@$v is not all scalar") if grep {ref($_)} @$v;
         $self->properties->{$p} = $v;
     }
@@ -317,7 +317,7 @@ sub get_property_list {
     if (!$self->properties) {
         $self->properties({});
     }
-    self->properties->{$p};
+    $self->properties->{$p};
 }
 
 

@@ -1,4 +1,4 @@
-# $Id: go-perl.pod,v 1.8 2005/03/18 19:45:54 cmungall Exp $
+# $Id: go-perl.pod,v 1.11 2005/07/14 22:04:30 cmungall Exp $
 #
 # see also - http://www.geneontology.org
 #          - http://www.godatabase.org/dev
@@ -7,7 +7,7 @@
 
 =head1 NAME
 
-  go-perl           - perl modules for GO and other OBO ontologies
+go-perl           - perl modules for GO and other OBO ontologies
 
 =head1 SYNOPSIS
 
@@ -128,8 +128,6 @@ following data columns:
   maximum no of paths for any term
   ID of term with maximum no of paths
 
-=back
-
 for full instructions, see L<go-dag-summary.pl>
 
 =item go-show-paths-to-root.pl
@@ -138,6 +136,26 @@ Will show all possible paths from a term to the root/top in the
 ontology
 
 for full instructions, see L<go-show-paths-to-root.pl>
+
+=item go-apply-xslt
+
+Will apply a GO XSL transform (by name) on an OBO-XML file
+
+For a full list of XSLs available, see
+L<http://www.godatabase.org/xml/xsl>
+
+=item go-export-graph.pl
+
+Writes an obo file out as an ascii-tree, a graphviz PNG or other format
+
+for full instructions, see L<go-export-graph.pl>
+
+=item go-show-assocs-by-node.pl
+
+given a GO ontology file and an association file and a term ID, will
+list all products associated to that ID
+
+for full instructions, see L<go-show-assocs-by-node.pl>
 
 =item go-filter-subset.pl
 
@@ -161,6 +179,12 @@ for full instructions, see L<go2fmt.pl>
 
 converts a file in any valid go/obo format to chadoxml. See also L<go2fmt.pl>
 
+=item go2godb_prestore
+
+converts a file in any valid go/obo format to an xml format that is
+isomorphic to the GO MySQL Db schema, and can be loaded with
+L<DBIx::DBStag>. See also L<go2fmt.pl>
+
 =item go2error_report
 
 converts a file in any valid go/obo format to error_report. See also L<go2fmt.pl>
@@ -180,9 +204,6 @@ converts a file in any valid go/obo format to obo_xml. See also L<go2fmt.pl>
 =item go2owl
 
 converts a file in any valid go/obo format to owl. See also L<go2fmt.pl>
-
-You will need to download the full go-dev distro to get the XSLTs from
-the XML directory
 
 =item go2pathlist
 
@@ -277,5 +298,5 @@ as perl itself.
 =cut
 
 package go-perl;
-$VERSION='0.02';
+$VERSION='0.03';
 1;

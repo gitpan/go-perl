@@ -28,7 +28,7 @@ GetOptions($opt,
            "cache=s",
            "inmap=s",
            "gff",
-           "ascpect|a=s",
+           "aspect|a=s",
 	   "count|c",
 	   "tab|t",
 	   "bucket|b=s",
@@ -213,7 +213,7 @@ while(<$fh>) {
         $prod = $cols[8];
     }
 
-    next if $is_not;                  # skip NOT assocs
+    next if $is_not && $is_not =~ /^not$/i;                  # skip NOT assocs
     if ($opt->{aspect}) {
         next unless $cols[8] eq $opt->{aspect};
     }

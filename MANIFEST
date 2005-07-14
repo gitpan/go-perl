@@ -93,6 +93,7 @@ scripts/go-export-graph.pl
 scripts/go-export-prolog.pl
 scripts/go-filter-subset.pl
 scripts/go-perl-make-pod-html.pl
+scripts/go-show-assocs-by-node.pl
 scripts/go-show-paths-to-root.pl
 scripts/go-validate-xml
 scripts/go2chadoxml
@@ -138,4 +139,14 @@ t/data/test-go.obo
 t/data/test-nucleolar.obo
 t/data/test2.ontology
 t/data/test_bad_function.dat
+GO/xsl/chadoxml_to_oboxml.xsl
+GO/xsl/oboxml_filter.xsl
+GO/xsl/oboxml_to_chadoxml.xsl
+GO/xsl/oboxml_to_dig.xsl
+GO/xsl/oboxml_to_godb_prestore.xsl
+GO/xsl/oboxml_to_obotext.xsl
+GO/xsl/oboxml_to_owl.xsl
+GO/xsl/oboxml_to_racer.xsl
+GO/xsl/oboxml_to_summary_table.xsl
+GO/xsl/owl_to_oboxml.xsl
 META.yml                                Module meta-data (added by MakeMaker)

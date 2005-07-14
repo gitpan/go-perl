@@ -1,4 +1,4 @@
-# $Id: Root.pm,v 1.3 2004/11/29 20:18:17 cmungall Exp $
+# $Id: Root.pm,v 1.4 2005/05/23 22:10:00 cmungall Exp $
 #
 # This GO module is maintained by Chris Mungall <cjm@fruitfly.org>
 #
@@ -15,7 +15,7 @@ package GO::Model::Root;
 
 =head1 DESCRIPTION
 
-base class
+base class for all GO::Model objects
 
 =cut
 
@@ -70,11 +70,12 @@ sub warn {
     warn("@msg");
 }
 
-=head2 apph
+=head2 obj_factory
 
-  Usage   -
-  Returns -
-  Args    -
+  Usage   - $obj->obj_factory->create_new_term_object($h);
+  Alias   - apph
+  Returns - L<GO::ObjFactory>
+  Args    - none
 
 =cut
 
@@ -83,6 +84,7 @@ sub apph {
     $self->{apph} = shift if @_;
     return $self->{apph};
 }
+*obj_factory = \&apph;
 
 
 =head2 sprint_self

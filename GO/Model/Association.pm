@@ -1,4 +1,4 @@
-# $Id: Association.pm,v 1.4 2004/12/03 00:00:50 cmungall Exp $
+# $Id: Association.pm,v 1.5 2005/06/29 18:40:19 sshu Exp $
 #
 # This GO module is maintained by Chris Mungall <cjm@fruitfly.org>
 #
@@ -47,7 +47,7 @@ use base qw(GO::Model::Root Exporter);
 
 
 sub _valid_params {
-    return qw(id gene_product evidence_list is_not role_group);
+    return qw(id gene_product evidence_list is_not role_group qualifier_list source_db_id assigned_by);
 }
 
 

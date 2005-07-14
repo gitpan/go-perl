@@ -54,6 +54,7 @@ use constant SYNONYM => 'synonym';
 use constant COMMENT => 'comment';
 use constant TO => 'to';
 use constant TYPE => 'type';
+use constant XREF => 'xref';
 use constant XREF_ANALOG => 'xref_analog';
 use constant XREF_UNKNOWN => 'xref_unknown';
 use constant DBXREF => 'dbxref';
@@ -122,6 +123,7 @@ use constant DBXREFS => 'dbxrefs';
                SYNONYM_TEXT 
              ALT_ID 
              COMMENT 
+             XREF
              XREF_ANALOG 
              XREF_UNKNOWN
              DBXREF 

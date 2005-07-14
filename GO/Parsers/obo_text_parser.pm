@@ -1,4 +1,4 @@
-# $Id: obo_text_parser.pm,v 1.21 2005/04/19 04:35:50 cmungall Exp $
+# $Id: obo_text_parser.pm,v 1.23 2005/07/13 23:05:08 cmungall Exp $
 #
 #
 # see also - http://www.geneontology.org
@@ -190,6 +190,11 @@ sub parse_fh {
 		my ($type, $id) = split(' ', $val2);
 		$val = [[TYPE,$type],[TO,$id]];
 	    }
+	    elsif ($tag eq XREF) {
+                $tag = XREF_ANALOG;
+		my $dbxref = dbxref($val);
+		$val = $dbxref->[1];
+	    }
 	    elsif ($tag eq XREF_ANALOG) {
 		my $dbxref = dbxref($val);
 		$val = $dbxref->[1];
@@ -227,8 +232,11 @@ sub parse_fh {
                         $scope = '';
                     }
                 }
-		my ($syn, $parts) =
+		my ($syn, $parts, $extra_quals) =
 		  extract_qstr($val);
+                if (@$extra_quals) {
+                    $scope = shift @$extra_quals;
+                }
                 if ($qh->{scope}) {
                     if ($scope) {
                         if ($scope ne $qh->{scope}) {
@@ -348,7 +356,14 @@ sub extract_qstr {
     $txt =~ s/^\"//;
     $txt =~ s/\"$//;
     if ($prefix) {
-	warn("illegal prefix: $prefix");
+	warn("illegal prefix: $prefix in: $str");
+    }
+
+    my @extra = ();
+    # eg synonym: "foo" EXACT [...]
+    if ($rem =~ /(\w+)\s+(\[.*)/) {
+        $rem = $2;
+        push(@extra,split(' ',$1));
     }
 
     my @parts = ();
@@ -362,7 +377,7 @@ sub extract_qstr {
       map {split_on_comma($_)} @parts;
     
     $txt =~ s/\\//g;
-    return ($txt, \@parts);
+    return ($txt, \@parts, \@extra);
 }
 
 sub split_on_comma {

@@ -1,4 +1,4 @@
-# $Id: Species.pm,v 1.2 2004/11/24 02:28:02 cmungall Exp $
+# $Id: Species.pm,v 1.3 2005/06/29 18:40:19 sshu Exp $
 #
 # This GO module is maintained by Chris Mungall <cjm@fruitfly.org>
 #
@@ -49,6 +49,6 @@ sub from_bpspecies {
 
 sub binomial {
     my $self = shift;
-    return $self->genus." ".$self->species;
+    return ($self->genus || "")." ".($self->species || "");
 }
 

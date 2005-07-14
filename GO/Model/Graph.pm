@@ -1,4 +1,4 @@
-# $Id: Graph.pm,v 1.14 2005/04/20 01:22:54 cmungall Exp $
+# $Id: Graph.pm,v 1.16 2005/05/25 15:46:27 hlapp Exp $
 #
 # This GO module is maintained by Chris Mungall <cjm@fruitfly.org>
 #
@@ -128,6 +128,7 @@ use Carp;
 use strict;
 use Exporter;
 use GO::Utils qw(rearrange max);
+use GO::ObjFactory;
 use GO::Model::Root;
 use GO::Model::Term;
 use GO::Model::Path;
@@ -162,12 +163,13 @@ sub _initialize {
     my $self = shift;
     $self->SUPER::_initialize(@_);
     $self->{nodes_h} = {};
-#    $self->{node_count} = 0;
     $self->{nodes_a} = {};
     $self->{n_children_h} = {};
     $self->{n_parents_h} = {};
     $self->{child_relationships_h} = {};
     $self->{parent_relationships_h} = {};
+    $self->apph(GO::ObjFactory->new) unless $self->apph;
+    return;
 }
 
 sub clone
@@ -1153,74 +1155,44 @@ sub get_acc_relationships {
     return $rels;
 }
 
-=head2 get_child_terms
-
-  Usage   - my $term_lref = $graph->get_child_terms($parent_term->acc);
-  Synonym - get_subj_terms
-  Synonym - get_subject_terms
-  Returns - ref to array of GO::Model::Term objs
-  Args    -
-
-See also L<GO::Model::Term>
-
-=cut
-
-sub get_child_terms {
-    my $self = shift;
-    my $acc = shift;
-
-    # if a term object is specified instead of ascc no, use the acc no
-    if (ref($acc) && $acc->isa("GO::Model::Term")) {
-	$acc = $acc->acc;
-    }
-
-    my $rels = $self->get_child_relationships($acc);
-    my @term_l = ();
-    foreach my $r (@$rels) {
-	my $t = $self->get_term($r->acc2);
-	if ($t) {
-	    push(@term_l, $t);
-	}
-    }
-    return \@term_l;
-}
-*get_subj_terms = \&get_child_terms;
-*get_subject_terms = \&get_child_terms;
-
 =head2 get_parent_terms
 
   Usage   - my $term_lref = $graph->get_parent_terms($parent_term->acc);
   Synonym - get_obj_terms
   Synonym - get_object_terms
   Returns - ref to array of GO::Model::Term objs
-  Args    -
+  Args    - the accession of the query term
 
 See also L<GO::Model::Term>
 
 =cut
 
 sub get_parent_terms {
-    my $self = shift;
-    my ($acc, $template) =
-      rearrange([qw(acc template)], @_);
-
-    # if a term object is specified instead of ascc no, use the acc no
-    if (ref($acc) && $acc->isa("GO::Model::Term")) {
-	$acc = $acc->acc;
-    }
-
-    my $rels = $self->get_parent_relationships($acc);
-    my @term_l = ();
-    foreach my $r (@$rels) {
-	my $t = $self->get_term($r->acc1);
-	if ($t) {
-	    push(@term_l, $t);
-	}
-    }
-    return \@term_l;
+    return shift->_get_related_terms_by_type("parent",@_);
 }
 *get_obj_terms = \&get_parent_terms;
 *get_object_terms = \&get_parent_terms;
+
+
+=head2 get_parent_terms_by_type
+
+  Usage   - 
+  Synonym - get_obj_terms_by_type
+  Synonym - get_object_terms_by_type
+  Returns - ref to array of GO::Model::Term objs
+  Args    - the accession of the query term
+          - the type by which to constrain relationships
+
+See also L<GO::Model::Term>
+
+=cut
+
+sub get_parent_terms_by_type {
+    return shift->_get_related_terms_by_type("parent",@_);
+}
+*get_obj_terms_by_type = \&get_parent_terms_by_type;
+*get_object_terms_by_type = \&get_parent_terms_by_type;
+
 
 =head2 get_recursive_parent_terms
 
@@ -1231,7 +1203,7 @@ sub get_parent_terms {
  Function:
  Example :
  Returns : 
- Args    :
+ Args    : accession of query term
 
 See also L<GO::Model::Term>
 
@@ -1263,26 +1235,7 @@ See also L<GO::Model::Term>
 =cut
 
 sub get_recursive_parent_terms_by_type {
-    my ($self,$acc, $type, $reflexive) = @_;
-   
-    my $rels = $self->get_parent_relationships($acc);   
-    if ($type) {
-        @$rels =
-          grep {
-              $_->type eq $type;
-          } @$rels;
-    }
-    my @pterms =
-      map {
-          my $term = $self->get_term($_->acc1);
-          my $rps = 
-            $self->get_recursive_parent_terms_by_type($_->acc1, $type);
-          ($term, @$rps);
-      } @$rels;
-    if ($reflexive) {
-        unshift(@pterms, $self->get_term($acc));
-    }
-    return \@pterms;
+    return shift->_get_recursive_related_terms_by_type("parent",@_);
 }
 *get_recursive_obj_terms_by_type = \&get_recursive_parent_terms_by_type;
 *get_recursive_object_terms_by_type = \&get_recursive_parent_terms_by_type;
@@ -1312,106 +1265,6 @@ sub get_reflexive_parent_terms {
    return $terms;
 }
 
-=head2 get_recursive_child_terms
-
- Title   : get_recursive_child_terms
- Usage   :
- Synonyms: get_recursive_subj_terms
- Synonyms: get_recursive_subject_terms
- Function:
- Example :
- Returns : 
- Args    :
-
-
-See also L<GO::Model::Term>
-
-=cut
-
-sub get_recursive_child_terms{
-   my ($self,$acc, $refl) = @_;
-   $self->get_recursive_child_terms_by_type($acc, $refl);
-}
-*get_recursive_subj_terms = \&get_recursive_child_terms;
-*get_recursive_subject_terms = \&get_recursive_child_terms;
-
-=head2 get_recursive_child_terms_by_type
-
- Title   : get_recursive_child_terms_by_type
- Usage   :
- Synonyms: get_recursive_subj_terms_by_type
- Synonyms: get_recursive_subject_terms_by_type
- Function:
- Example :
- Returns : 
- Args    :
-
-if type is blank, gets all
-
-See also L<GO::Model::Term>
-
-=cut
-
-sub get_recursive_child_terms_by_type{
-    my ($self,$acc, $type, $refl) = @_;
-   
-    my $rels = $self->get_child_relationships($acc);   
-    if ($type) {
-        @$rels =
-          grep {
-              $_->type eq $type;
-          } @$rels;
-    }
-    my @pterms =
-      map {
-          my $term = $self->get_term($_->child_acc);
-          my $rps = 
-            $self->get_recursive_child_terms_by_type($_->child_acc, $type);
-          ($term, @$rps);
-      } @$rels;
-    if ($refl) {
-        @pterms = ($self->get_term($acc), @pterms);
-    }
-    return \@pterms;
-}
-*get_recursive_subj_terms_by_type = \&get_recursive_child_terms_by_type;
-*get_recursive_subject_terms_by_type = \&get_recursive_child_terms_by_type;
-
-=head2 get_parent_accs_by_type
-
-  Usage   -
-  Returns -
-  Args    - acc, type
-
-=cut
-
-sub get_parent_accs_by_type {
-    my $self = shift;
-    my $term = shift;
-    my $type = shift;
-    my $rels = $self->get_parent_relationships($term);
-    return [map {$_->acc1} grep {lc($_->type) eq lc($type) } @$rels];
-}
-
-
-=head2 get_parent_terms_by_type
-
-  Usage   -
-  Returns -
-  Args    - acc, type
-
-See also L<GO::Model::Term>
-
-=cut
-
-sub get_parent_terms_by_type {
-    my $self = shift;
-    my $term = shift;
-    my $type = shift;
-    my $accs = $self->get_parent_accs_by_type($term, $type);
-    return [map {$self->get_term($_)} @$accs];
-}
-
 =head2 get_reflexive_parent_terms_by_type
 
  Title   : get_reflexive_parent_terms_by_type
@@ -1432,6 +1285,202 @@ sub get_reflexive_parent_terms_by_type{
    my $terms = $self->get_recursive_parent_terms_by_type($acc, $type);
    return [$self->get_term($acc), @$terms];
 }
+
+=head2 get_child_terms
+
+  Usage   - my $term_lref = $graph->get_child_terms($parent_term->acc);
+  Synonym - get_subj_terms
+  Synonym - get_subject_terms
+  Returns - ref to array of GO::Model::Term objs
+  Args    -
+
+See also L<GO::Model::Term>
+
+=cut
+
+sub get_child_terms {
+    return shift->_get_related_terms_by_type("child",@_);
+}
+*get_subj_terms = \&get_child_terms;
+*get_subject_terms = \&get_child_terms;
+
+=head2 get_child_terms_by_type
+
+  Synonym - get_subj_terms_by_type
+  Synonym - get_subject_terms_by_type
+  Returns - ref to array of GO::Model::Term objs
+  Args    - the accession of the query term
+          - the type by which to constrain relationships
+
+See also L<GO::Model::Term>
+
+=cut
+
+sub get_child_terms_by_type {
+    return shift->_get_related_terms_by_type("child",@_);
+}
+*get_subj_terms_by_type = \&get_child_terms_by_type;
+*get_subject_terms_by_type = \&get_child_terms_by_type;
+
+=head2 get_recursive_child_terms
+
+ Title   : get_recursive_child_terms
+ Usage   :
+ Synonyms: get_recursive_subj_terms
+ Synonyms: get_recursive_subject_terms
+ Function:
+ Example :
+ Returns : a reference to an array of L<GO::Model::Term> objects
+ Args    : the accession of the query term
+
+
+See also L<GO::Model::Term>
+
+=cut
+
+sub get_recursive_child_terms{
+   my ($self,$acc, $refl) = @_;
+   $self->get_recursive_child_terms_by_type($acc, undef, $refl);
+}
+*get_recursive_subj_terms = \&get_recursive_child_terms;
+*get_recursive_subject_terms = \&get_recursive_child_terms;
+
+=head2 get_recursive_child_terms_by_type
+
+ Title   : get_recursive_child_terms_by_type
+ Usage   :
+ Synonyms: get_recursive_subj_terms_by_type
+ Synonyms: get_recursive_subject_terms_by_type
+ Function:
+ Example :
+ Returns : a reference to an array of L<GO::Model::Term> objects
+ Args    : accession, type
+
+if type is blank, gets all
+
+See also L<GO::Model::Term>
+
+=cut
+
+sub get_recursive_child_terms_by_type{
+    return shift->_get_recursive_related_terms_by_type("child",@_);
+}
+*get_recursive_subj_terms_by_type = \&get_recursive_child_terms_by_type;
+*get_recursive_subject_terms_by_type = \&get_recursive_child_terms_by_type;
+
+=head2 _get_recursive_related_terms_by_type
+
+ Title   : _get_recursive_related_terms_by_type
+ Usage   :
+ Function: Obtain all relationships of the given kind and type for the
+           term identified by its accession, and recursively repeat
+           this with all parents and children as query for parent and
+           child relationships, respectively.
+
+           This is an internal method.
+ Example :
+ Returns : A reference to an array of L<GO::Model::Term> objects.
+ Args    : - the kind of relationship, either "child" or "parent"
+           - the accession of the term with which to query
+           - the type to which to constrain relationships (optional,
+             all types if left undef)
+           - TRUE if reflexive and FALSE otherwise (default FALSE)
+
+See also L<GO::Model::Term>
+
+=cut
+
+sub _get_recursive_related_terms_by_type{
+    my ($self, $relkind, $acc, $type, $refl) = @_;
+   
+    # if a term object is specified instead of ascc no, use the acc no
+    if (ref($acc) && $acc->isa("GO::Model::Term")) {
+	$acc = $acc->acc;
+    }
+
+    my $rels = ($relkind eq "child")
+        ? $self->get_child_relationships($acc)
+        : $self->get_parent_relationships($acc);
+
+    if ($type) {
+        @$rels = grep { $_->type eq $type; } @$rels;
+    }
+
+    my $relmethod = $relkind."_acc";
+
+    my @pterms =
+      map {
+          my $term = $self->get_term($_->$relmethod());
+          my $rps = 
+            $self->_get_recursive_related_terms_by_type($relkind,
+                                                        $_->$relmethod(), 
+                                                        $type);
+          ($term, @$rps);
+      } @$rels;
+    if ($refl) {
+        @pterms = ($self->get_term($acc), @pterms);
+    }
+    return \@pterms;
+}
+
+=head2 _get_related_terms_by_type
+
+  Usage   - my $term_lref = $graph->_get_related_terms_by_type("child",$acc);
+  Returns - ref to array of GO::Model::Term objs
+
+  Args    - the kind of relationship, either "child" or "parent" 
+          - the accession of the term for which to obtain rel.ships
+          - the type by which to constrain relationships (optional,
+            defaults to all terms if left undef)
+
+This is an internal method.
+
+=cut
+
+sub _get_related_terms_by_type {
+    my ($self,$relkind,$acc,$type) = @_;
+
+    # if a term object is specified instead of ascc no, use the acc no
+    if (ref($acc) && $acc->isa("GO::Model::Term")) {
+	$acc = $acc->acc;
+    }
+
+    my $rels = ($relkind eq "child")
+        ? $self->get_child_relationships($acc)
+        : $self->get_parent_relationships($acc);
+
+    if ($type) {
+        @$rels = grep { $_->type eq $type; } @$rels;
+    }
+
+    my $relmethod = $relkind."_acc";
+
+    my @term_l = ();
+    foreach my $r (@$rels) {
+	my $t = $self->get_term($r->$relmethod());
+	if ($t) {
+	    push(@term_l, $t);
+	}
+    }
+    return \@term_l;
+}
+
+=head2 get_parent_accs_by_type
+
+  Usage   -
+  Returns -
+  Args    - acc, type
+
+=cut
+
+sub get_parent_accs_by_type {
+    my $self = shift;
+    my $term = shift;
+    my $type = shift;
+    my $rels = $self->get_parent_relationships($term);
+    return [map {$_->acc1} grep {lc($_->type) eq lc($type) } @$rels];
+}
+
 
 =head2 get_reflexive_parent_accs_by_type
 
@@ -1550,8 +1599,11 @@ sub close_below {
         if (ref($node) eq "ARRAY") {
             map { $self->close_below($_) } @$node;
             return;
+        } elsif ($node->isa('GO::Model::Term')) {
+            $acc = $node->acc;
+        } else {
+            $acc = $node->{acc};
         }
-        $acc = $node->{acc};
     }
     else {
         $acc = $node;
@@ -1922,14 +1974,13 @@ sub add_term {
     if (!ref($term)) {
 	confess("Term must be either hashref or Term object");
     }
-    my $acc = $term->{acc};
+    if (ref($term) eq 'HASH') {
+#        $term = $self->apph->create_term_obj($term);
+        $term = GO::Model::Term->new($term);
+    }
+    my $acc = $term->acc;
     $acc or confess ("$term has no acc");
-    if (ref($term) eq "HASH") {
-	$self->{nodes_a}->{$acc} = GO::Model::Term->new($term);
-    }
-    else {
-	$self->{nodes_a}->{$acc} = $term;
-    }
+    $self->{nodes_a}->{$acc} = $term;
     $self->{nodes_h}->{$acc} = $self->{nodes_a}->{$acc};
     $term;
 }
@@ -2001,14 +2052,14 @@ sub add_relationship {
 	$rel = GO::Model::Relationship->new({acc1=>$from_id, acc2=>$to_id});
         $rel->type($type || 'is_a');
     }
-    if (!ref($rel)) {
-	my ($from_id, $to_id, $type) = @_;
-	$rel = GO::Model::Relationship->new({acc1=>$from_id, acc2=>$to_id});
-        $rel->type($type);
-    }
-    if (ref($rel) eq "HASH") {
-	$rel = GO::Model::Relationship->new($rel);
-    }
+#    if (!ref($rel)) {
+#	my ($from_id, $to_id, $type) = @_;
+#	$rel = GO::Model::Relationship->new({acc1=>$from_id, acc2=>$to_id});
+#        $rel->type($type);
+#    }
+#    if (ref($rel) eq "HASH") {
+#	$rel = GO::Model::Relationship->new($rel);
+#    }
 
     $rel->acc1 || confess($rel);
     $rel->acc2 || confess($rel);

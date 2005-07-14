@@ -12,12 +12,17 @@ my $fmt;
 GetOptions("write|w=s"=>\$w,
            "use_cache"=>\$use_cache,
            "format|parser|p=s"=>\$fmt,
-           "help|h"=>sub{system("perldoc $0")},
+           "help|h"=>sub{system("perldoc $0");exit 0},
           );
 
 my $graph = parse({format=>$fmt,
                    use_cache=>$use_cache},shift @ARGV);
 my $subgraph = $graph->subgraph({@ARGV});
+unless ($subgraph->term_count) {
+    print STDERR "No matching terms for: @ARGV\n";
+    exit 1;
+}
+
 if ($w eq 'text') {
     $subgraph->to_text_output;
 }
@@ -44,7 +49,9 @@ go-export-graph.pl
 
   go-export-graph.pl -w png ontology/gene_ontology.obo | display -
 
-  go-export-graph.pl ontology/gene_ontology.obo acc GO:007610
+  go-export-graph.pl ontology/gene_ontology.obo 'acc' GO:0007610
+
+  go-export-graph.pl ontology/so.obo 'name' 'protein'
 
 =head1 DESCRIPTION
 

@@ -1,4 +1,4 @@
-# $Id: obo_text_parser.pm,v 1.23 2005/07/13 23:05:08 cmungall Exp $
+# $Id: obo_text_parser.pm,v 1.24 2005/10/06 19:10:35 cmungall Exp $
 #
 #
 # see also - http://www.geneontology.org
@@ -47,6 +47,7 @@ sub parse_fh {
     $self->start_event(OBO);
     $self->fire_source_event($file);
     $self->start_event(HEADER);
+    my $stanza_count;
     my $in_hdr = 1;
     my $is_root = 1; # default
     my $namespace_set;
@@ -106,6 +107,7 @@ sub parse_fh {
             $is_root = 0 unless $stanza eq 'term';
 	    $self->start_event($stanza);
             $id = undef;
+            $stanza_count++;
 	}
         elsif ($in_hdr) {
 
@@ -307,7 +309,7 @@ sub parse_fh {
 
     # duplicated code! check final event
     if (!$namespace_set) {
-        if (!$namespace) {
+        if (!$namespace && $stanza_count) {
             $self->parse_err("missing namespace for ID: $id");
         }
         else {

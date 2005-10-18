@@ -230,10 +230,30 @@
     <xsl:for-each select="owl:Restriction">
       <intersection_of>
         <type>
-          <xsl:apply-templates mode="resolve-id" select="owl:onProperty"/>
+          <xsl:choose>
+            <!-- todo: not exhaustive enough -->
+            <xsl:when test="owl:onProperty/owl:ObjectProperty">
+              <xsl:apply-templates mode="resolve-id" select="owl:onProperty/owl:ObjectProperty"/>
+            </xsl:when>
+            <xsl:otherwise>
+              <xsl:apply-templates mode="resolve-id" select="owl:onProperty"/>
+            </xsl:otherwise>
+          </xsl:choose>
         </type>
         <to>
-          <xsl:apply-templates mode="resolve-id" select="owl:allValuesFrom|owl:someValuesFrom|owl:hasValue"/>
+          <!-- warning!! currently obo does not distinguish existential/universal -->
+          <xsl:choose>
+            <xsl:when test="owl:allValuesFrom|owl:someValuesFrom|owl:hasValue">
+              <xsl:apply-templates mode="resolve-id" 
+                select="owl:allValuesFrom|owl:someValuesFrom|owl:hasValue"/>
+            </xsl:when>
+            <xsl:otherwise>
+              <xsl:message terminate="yes">
+                <xsl:text>relationship to unresolvable</xsl:text>
+                <xsl:copy-of select="."/>
+              </xsl:message>
+            </xsl:otherwise>
+          </xsl:choose>
         </to>
       </intersection_of>            
     </xsl:for-each>
@@ -246,9 +266,28 @@
   </xsl:template>
 
   <xsl:template mode="resolve-id" match="*|@*">
-    <xsl:value-of select="@rdf:ID"/>
-    <xsl:value-of select="substring-after(@rdf:about,'#')"/>
-    <xsl:value-of select="substring-after(@rdf:resource,'#')"/>    
+    <xsl:choose>
+      <!-- multiple ways of refering to something -->
+      <xsl:when test="owl:Class">
+        <!-- class object - recursively resolve -->
+        <xsl:apply-templates mode="resolve-id" select="owl:Class"/>
+      </xsl:when>
+      <xsl:when test="@rdf:ID">
+        <xsl:value-of select="@rdf:ID"/>
+      </xsl:when>
+      <xsl:when test="substring-after(@rdf:about,'#')">
+        <xsl:value-of select="substring-after(@rdf:about,'#')"/>
+      </xsl:when>
+      <xsl:when test="substring-after(@rdf:resource,'#')">    
+        <xsl:value-of select="substring-after(@rdf:resource,'#')"/>    
+      </xsl:when>
+      <xsl:otherwise>
+        <xsl:message>
+          <xsl:text>Cannot resolve ID</xsl:text>
+          <xsl:copy-of select="."/>
+        </xsl:message>
+      </xsl:otherwise>
+    </xsl:choose>
   </xsl:template>
 
 </xsl:stylesheet>

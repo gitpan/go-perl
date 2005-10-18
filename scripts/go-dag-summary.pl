@@ -88,6 +88,8 @@ sub summarise_file {
             $counts{pathmaxacc}->{$ns} = $acc;            
             $counts{pathmaxname}->{$ns} = $t->name;            
         }
+
+
     }
     foreach my $ns (keys %ns_h) {
         printf "%s\n",
@@ -102,6 +104,7 @@ sub summarise_file {
 }
 $errhandler->finish;
 exit 0;
+
 
 __END__
 

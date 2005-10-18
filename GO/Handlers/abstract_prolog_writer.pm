@@ -23,6 +23,9 @@ sub prologquote {
     }
     else {
         $s = '' unless defined $s;
+        if ($s =~ /^\-?[0-9]+$/) {
+            return $s;
+        }
         $s =~ s/\'/\'\'/g;
         "'$s'";
     }

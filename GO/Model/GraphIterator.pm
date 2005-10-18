@@ -1,4 +1,4 @@
-# $Id: GraphIterator.pm,v 1.6 2005/02/11 05:44:56 cmungall Exp $
+# $Id: GraphIterator.pm,v 1.7 2005/08/18 21:22:37 cmungall Exp $
 #
 # This GO module is maintained by Chris Mungall <cjm@fruitfly.org>
 #
@@ -285,20 +285,16 @@ sub next_node_instance {
     my $sortf = $fh{$sort_by};
     confess("Dont know $sort_by") unless $sortf;
 
-    @new =
-      sort $sortf @new;
+    @new = sort $sortf @new;
+
+    my $visited = $self->visited;
 
     if ($self->no_duplicates) {
         # don't visit nodes twice
-        my $lookup = $self->visited;
-        my @unique = ();
-        foreach (@new) {
-            if (!$lookup->{$_->term->acc}) {
-                $lookup->{$_->term->acc} = 1;
-                push(@unique, $_);
-            }
-        }
-        @new = @unique;
+        @new = grep {!$visited->{$_->term->acc}} @new;
+    }
+    foreach (@new) {
+        $visited->{$_->term->acc} = 1;
     }
 
     if ($order eq "breadth") {

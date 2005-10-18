@@ -1,4 +1,4 @@
-# $Id: Graph.pm,v 1.16 2005/05/25 15:46:27 hlapp Exp $
+# $Id: Graph.pm,v 1.17 2005/08/18 21:22:36 cmungall Exp $
 #
 # This GO module is maintained by Chris Mungall <cjm@fruitfly.org>
 #
@@ -2252,8 +2252,6 @@ sub add_buckets {
 
 hacky text output
 
-ALPHA CODE - behaviour may change
-
 this method should probably move out of the model code
 into output adapters
 
@@ -2269,9 +2267,7 @@ sub to_text_output {
 
     $opts = {} unless $opts;
     $it = $self->create_iterator unless $it;
-    if ($opts->{concise}) {
-        $it->no_duplicates(1);
-    }
+    $it->no_duplicates(1);
     if ($opts->{isa_only}) {
         $it->reltype_filter("isa");
     }
@@ -2279,6 +2275,7 @@ sub to_text_output {
         while (my $ni = $it->next_node_instance) {
             my $depth = $ni->depth;
             my $term = $ni->term;
+            next if $term->is_relationship_type;
             my $parent_rel = $ni->parent_rel;
             my $line = " " x $depth;
             my $prefix = 
@@ -2363,8 +2360,9 @@ sub to_text_output {
     }
     else {
         while (my $ni = $it->next_node_instance) {
-            my $depth = $ni->depth;
             my $term = $ni->term;
+            next if $term->is_relationship_type;
+            my $depth = $ni->depth;
             my $parent_rel = $ni->parent_rel;
             tab($depth, $self->is_focus_node($term) ? "->" : "  ");
             my %th = qw(isa % partof < developsfrom ~);

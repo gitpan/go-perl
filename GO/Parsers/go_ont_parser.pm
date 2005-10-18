@@ -1,4 +1,4 @@
-# $Id: go_ont_parser.pm,v 1.16 2005/03/22 22:38:32 cmungall Exp $
+# $Id: go_ont_parser.pm,v 1.17 2005/08/19 01:48:09 cmungall Exp $
 #
 #
 # see also - http://www.geneontology.org
@@ -135,6 +135,13 @@ sub parse_fh {
         if ($line =~ /^\!type:\s*(\S+)\s+(\S+)/) {
             my ($code, $name) = ($1, $2);
             $name =~ s/\s+/_/g;
+            $name = lc($name);
+            if ($name eq 'isa') {
+                $name = 'is_a';
+            }
+            if ($name eq 'partof') {
+                $name = 'part_of';
+            }
             $typemap{$code} = $name
               unless $code eq '%';
             #$code = '\\'.$code;

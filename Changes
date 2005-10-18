@@ -1,8 +1,3 @@
-VERSION 0.01
-============
-
-VERSION 0.02
-============
 
 2005-01-31      - [cjm] Inititation of Changes file
 
@@ -55,3 +50,17 @@ VERSION 0.02
 
 2005-06-29      - [cjm] now accepts obo1.2 format synonyms
                         accepts obo1.2 xref tag (maps to xref_analog in xml)
+
+VERSION 0.04
+============
+
+2005-08-18      - [cjm] made no_duplicates(1) default in exporting
+                        an ontology to deprecated go_ont format
+                        (this was causing problems with cycles)
+
+2005-09-06      - [cjm] new xsl for chadoxml
+
+2005-10-05      - [cjm] obo_text_parser - no longer warns of missing
+                                namespace, if it is a header-only
+                                obo file
+                        owl2obo fixed

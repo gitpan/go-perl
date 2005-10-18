@@ -147,7 +147,22 @@
           </xsl:otherwise>
         </xsl:choose>
       </name>
-      <cv_id>relationship</cv_id>
+
+      <xsl:choose>
+        <xsl:when test="namespace">
+          <cv_id>
+            <cv>
+              <name>
+                <xsl:value-of select="namespace"/>
+              </name>
+            </cv>
+          </cv_id>
+        </xsl:when>
+        <xsl:otherwise>
+          <cv_id>relationship</cv_id>          
+        </xsl:otherwise>
+      </xsl:choose>
+
       <xsl:if test="is_obsolete">
         <is_obsolete>1</is_obsolete>
       </xsl:if>

@@ -19,7 +19,7 @@ while (<>) {
             my $outf = $dir . '/'. $n . '.html';
             my $tmpf = "tmp";
             open(OF,">$tmpf") || die ("can't open $tmpf");
-            open(F, $f) || die $f;
+            open(F, $f) || die ("cannot open file:$f");
             while(<F>) {
                 s/L\<(map2slim|go2\w+|\w+)(\.pl|)\>/L\<scripts::$1\>/g;
                 print OF $_;

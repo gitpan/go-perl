@@ -17,9 +17,21 @@ sub s_obo {
     $self->nl;
 }
 
+sub e_header {
+    my ($self, $hdr) = @_;
+    my $idspace = $hdr->sget_idspace;
+    if ($idspace =~ /(\S+)\s+(\S+)/) {
+        $self->fact(idspace=>[$1,$2]);
+    }
+    $self->nl;
+    return;
+}
+
+
 sub e_typedef {
     my ($self, $typedef) = @_;
     $self->cmt("-- Property/Slot --\n");
+    my $ont = $typedef->get_namespace;
     my $id = $typedef->get_id || $self->throw($typedef->sxpr);
     my $proptype = 'property';
     my $domain = $typedef->get_domain;
@@ -30,6 +42,9 @@ sub e_typedef {
     $self->fact($proptype, [$id, $typedef->sget_name]);
     my @is_as = $typedef->get_is_a;
     $self->fact('subclass', [$id, $_]) foreach @is_as;
+    if ($ont) {
+	$self->fact('belongs', [$id, $ont]);
+    }
     foreach (qw(inverse_of is_reflexive is_anti_symmetric is_symmetric is_transitive)) {
         if ($typedef->sget($_)) {
             $self->fact($_,[$id]);
@@ -118,6 +133,9 @@ sub export_tags {
     if ($def) {
         $self->fact('def',[$id, $def->sget_defstr]);
     }
+    foreach ($term->get_comment) {
+        $self->fact('class_comment',[$id, $_]);
+    }
     foreach ($term->get_synonym) {
         $self->fact('synonym',[$id, ($_->sget('@/scope') || ''),$_->sget_synonym_text]);
     }
@@ -145,10 +163,47 @@ sub nextid_by_prod {
     return $self->{_nextid_by_prod};
 }
 
+sub e_prod {
+    my ($self, $gp) = @_;   
+    my $proddb = $self->up(-1)->sget_proddb;
+    my $prodacc = $gp->sget_prodacc;
+
+    # all gene products go in seqfeature_db module
+    my $id = "$proddb:$prodacc";
+    $self->fact('seqfeature_db:feature',
+                [$id,$gp->sget_prodsymbol,$gp->sget_prodtype]);
+    $self->fact('seqfeature_db:feature_organism',
+                [$id,'NCBITaxon:'.$gp->sget("prodtaxa")]);
+    $self->fact('seqfeature_db:featureprop',
+                [$id,'description',$gp->sget_name]);
+    $self->fact('seqfeature_db:featureprop',
+                [$id,'synonym',$_])
+      foreach $gp->get_name;
+
+    # associations between gp and term
+    my @assocs = $gp->get_assoc;
+    my $idh = $self->nextid_by_prod;
+    foreach my $assoc (@assocs) {
+        my $n = $idh->{$id}++;
+        my $aid = "$id-$n";
+        $self->fact('association',
+                    [$aid,$assoc->sget_termacc,$id,$assoc->sget_is_not]);
+        my @evs = $assoc->get_evidence;
+        foreach my $ev (@evs) {
+            $self->fact('evidence',
+                        [$aid,$ev->sget_evcode]);
+        }
+        my @ins = $assoc->get_in;
+        foreach my $in (@ins) {
+            $self->fact('association_id',
+                        [$aid,$in]);
+        }
+    }
+}
 
 # gene products -> generic instances
 # !EXPERIMENTAL!
-sub e_prod {
+sub OLD__e_prod {
     my ($self, $gp) = @_;   
     my $proddb = $self->up(-1)->sget_proddb;
     my $prodacc = $gp->sget_prodacc;
@@ -158,10 +213,15 @@ sub e_prod {
     # taxonID points to a metaclass
     # (eg taxon:7227 is both an instance and a class)
     $self->fact('inst_sv',[$id,'in_organism','taxon:'.$gp->sget("prodtaxa")]);
-    foreach my $k (qw(symbol name syn)) {
+    my %kmap =
+      (
+       name=>'name',
+       syn=>'synonym');
+    foreach my $k (keys %kmap) {
         my @vals = $gp->get("prod$k");
+        my $kn = $kmap{$k};
         foreach (@vals) {
-            $self->fact('inst_sv',[$id,$k,$_]);
+            $self->fact('inst_sv',[$id,$kn,$_]);
         }
     }
     my @assocs = $gp->get_assoc;

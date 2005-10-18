@@ -73,6 +73,7 @@ GO/Parsers/locuslink_parser.pm
 GO/Parsers/mesh_parser.pm
 GO/Parsers/mgi_assoc_parser.pm
 GO/Parsers/ncbi_taxon_names_parser.pm
+GO/Parsers/ncbi_taxonomy_parser.pm
 GO/Parsers/obj_emitter.pm
 GO/Parsers/obj_storable_parser.pm
 GO/Parsers/obj_yaml_parser.pm
@@ -115,7 +116,10 @@ scripts/go2sxpr
 scripts/go2tbl
 scripts/go2text_html
 scripts/go2xml
+scripts/ipr2obo
+scripts/ipr2obo_xml
 scripts/map2slim
+scripts/owl2obo
 t/t010build.t
 t/t020paths.t
 t/t030detecterror.t
@@ -140,6 +144,7 @@ t/data/test-nucleolar.obo
 t/data/test2.ontology
 t/data/test_bad_function.dat
 GO/xsl/chadoxml_to_oboxml.xsl
+GO/xsl/ipr_to_oboxml.xsl
 GO/xsl/oboxml_filter.xsl
 GO/xsl/oboxml_to_chadoxml.xsl
 GO/xsl/oboxml_to_dig.xsl

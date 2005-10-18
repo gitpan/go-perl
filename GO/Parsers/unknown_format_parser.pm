@@ -1,4 +1,4 @@
-# $Id: unknown_format_parser.pm,v 1.8 2005/03/14 22:18:17 cmungall Exp $
+# $Id: unknown_format_parser.pm,v 1.9 2005/08/18 21:23:11 cmungall Exp $
 #
 #
 # see also - http://www.geneontology.org
@@ -82,7 +82,7 @@ sub parse_file {
 	    if ($file =~ /\.obo$/ || $file =~ /\.obo[\.\-_]text$/) {
 		$fmt = "obo_text";
 	    }
-	    if ($file =~ /\.obo[\.\-_]xml$/) {
+	    if ($file =~ /\.obo\W*xml$/) {
 		$fmt = "obo_xml";
 	    }
 	    if (!$fmt) {

@@ -1,4 +1,4 @@
-# $Id: obj.pm,v 1.15 2005/05/23 22:10:00 cmungall Exp $
+# $Id: obj.pm,v 1.18 2006/08/05 20:26:12 cmungall Exp $
 #
 # This GO module is maintained by Chris Mungall <cjm@fruitfly.org>
 #
@@ -169,7 +169,7 @@ sub stanza {
             my $synstr = stag_get($sn, SYNONYM_TEXT);
             my $type = stag_find($sn, 'scope');
 	    my @xrefs = stag_get($sn, DBXREF);
-	    $term->add_synonym_by_type($type, $synstr);
+	    $term->add_synonym_by_type(lc($type), $synstr);
 #	    $term->add_definition_dbxref($_) foreach @xrefs;
         }
         elsif ($k eq ALT_ID) {
@@ -243,9 +243,11 @@ sub stanza {
                $k eq IS_ANTI_SYMMETRIC  ||
                $k eq IS_REFLEXIVE  ||
                $k eq INVERSE_OF ||
+               $k eq TRANSITIVE_OVER ||
                $k eq DOMAIN ||
                $k eq RANGE) {
-            # obo extensions - not dealt with yet
+            my $m = lc($k);
+            $term->$m($v);
         }
         elsif ($term->can("add_$k")) {
             # CONVENIENCE METHOD - map directly to object method
@@ -257,6 +259,20 @@ sub stanza {
             warn("add method for $k");
             # CONVENIENCE METHOD - map directly to object method
             $term->$k($v);
+        }
+        elsif ($k eq INTERSECTION_OF) {
+            my $rel = stag_get($sn, TYPE);
+            my $obj = stag_get($sn, TO);
+            my $isect = [$rel,$obj];
+            if (!$rel) {
+                shift @$isect;
+            }
+            my $ldef = $term->logical_definition;
+            if (!$ldef) {
+                $ldef = $self->apph->create_logical_definition_obj();
+                $term->logical_definition($ldef);
+            }
+            $ldef->add_intersection($isect);
         }
         else {
             warn("add method for $k");
@@ -278,8 +294,8 @@ sub stanza {
 
 #    $term->type($self->{ontology_type}) unless $term->type;
     if (!$term->name) {
-        warn("no name; using acc ".$term->acc);
-        $term->name($term->acc);
+#        warn("no name; using acc ".$term->acc);
+#        $term->name($term->acc);
     }
     if ($stanza eq 'typedef') {
         $term->is_relationship_type(1);

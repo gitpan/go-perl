@@ -1,4 +1,4 @@
-# $Id: base_parser.pm,v 1.13 2005/05/25 18:39:58 cmungall Exp $
+# $Id: base_parser.pm,v 1.14 2005/12/03 00:09:04 cmungall Exp $
 #
 #
 # see also - http://www.geneontology.org
@@ -156,6 +156,7 @@ sub fire_source_event {
 			 );
     return;
 }
+
 sub parse_assocs {
     my $self = shift;
     my $fn = shift;
@@ -164,6 +165,14 @@ sub parse_assocs {
     %$p = %$self;
     $p->parse($fn);
     return;
+}
+
+sub parse_to_graph {
+    my $self = shift;
+    my $h = GO::Parser->create_handler('obj');
+    $self->handler($h);
+    $self->parse(@_);
+    return $h->graph;
 }
 
 sub set_type {
@@ -284,8 +293,7 @@ sub parse {
             }
             else {
                 # use cache
-                my $p2 = GO::Parser->new({
-                                          format=>'obj_storable'});
+                my $p2 = GO::Parser->new({format=>'obj_storable'});
                 $p2->handler($self->handler);
                 # this is the only state we need to copy across
                 if ($self->can('xslt')) {

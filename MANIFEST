@@ -51,6 +51,7 @@ GO/Model/GeneProduct.pm
 GO/Model/Graph.pm
 GO/Model/GraphIterator.pm
 GO/Model/GraphNodeInstance.pm
+GO/Model/LogicalDefinition.pm
 GO/Model/Modification.pm
 GO/Model/Ontology.pm
 GO/Model/Path.pm
@@ -93,6 +94,7 @@ scripts/go-dag-summary.pl
 scripts/go-export-graph.pl
 scripts/go-export-prolog.pl
 scripts/go-filter-subset.pl
+scripts/go-make-slim.pl
 scripts/go-perl-make-pod-html.pl
 scripts/go-show-assocs-by-node.pl
 scripts/go-show-paths-to-root.pl
@@ -119,6 +121,9 @@ scripts/go2xml
 scripts/ipr2obo
 scripts/ipr2obo_xml
 scripts/map2slim
+scripts/obo-grep.pl
+scripts/obo-merge-tags.pl
+scripts/obo-promote-dbxref-to-intersection.pl
 scripts/owl2obo
 t/t010build.t
 t/t020paths.t
@@ -131,12 +136,20 @@ t/t100roundtrip.t
 t/t110basic.t
 t/t120rt.sh
 t/t130relations.t
+t/t140subgraph.t
+t/t150xref.t
+t/t160logicaldef.t
+t/t170chadoxml.t
+t/t180ncbi_taxonomy.t
 t/validate_all.x
 t/data/GO.defs
 t/data/generic.0208
 t/data/go-truncated.obo
+t/data/llm.obo
 t/data/process.ontology
 t/data/relationship.obo
+t/data/sample.ncbi_taxonomy
+t/data/spkw2go
 t/data/test-function.dat
 t/data/test-gene_association.fb
 t/data/test-go.obo
@@ -154,4 +167,4 @@ GO/xsl/oboxml_to_owl.xsl
 GO/xsl/oboxml_to_racer.xsl
 GO/xsl/oboxml_to_summary_table.xsl
 GO/xsl/owl_to_oboxml.xsl
-META.yml                                Module meta-data (added by MakeMaker)
+META.yml                                 Module meta-data (added by MakeMaker)

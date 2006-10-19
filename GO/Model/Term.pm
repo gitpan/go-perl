@@ -1,4 +1,4 @@
-# $Id: Term.pm,v 1.13 2005/06/29 18:40:19 sshu Exp $
+# $Id: Term.pm,v 1.17 2006/09/11 21:59:52 cmungall Exp $
 #
 # This GO module is maintained by Chris Mungall <cjm@fruitfly.org>
 #
@@ -90,10 +90,12 @@ use vars qw(@ISA);
 
 use base qw(GO::Model::Root Exporter);
 
-
-sub _valid_params {
-    return qw(id type term_type name description is_obsolete is_relationship_type public_acc acc definition synonym_list association_list selected_association_list association_hash n_associations dbxref_list property_list subset_list stag);
-}
+sub _valid_params { return qw(id type term_type name description
+is_obsolete is_relationship_type public_acc acc definition
+synonym_list association_list selected_association_list
+association_hash n_associations dbxref_list property_list subset_list
+stag is_anonymous is_cyclic is_transitive is_symmetric is_anti_symmetric is_reflexive
+inverse_of transitive_over domain range logical_definition); }
 
 =head2 acc
 
@@ -145,8 +147,9 @@ sub description {
     $self->name(@_);
 }
 
-=head2 type
+=head2 namespace
 
+  Alias   - type
   Alias   - term_type
   Alias   - category
   Alias   - ontology
@@ -170,13 +173,25 @@ sub category { shift->type(@_) }
 sub ontology { shift->type(@_) }
 sub namespace { shift->type(@_) }
 
+=head2 subset_list
 
+  Usage   - foreach (@{$term->subset_list || []}) { printf " $_\n" }
+  Returns - list of strings
+  Args    - list of strings [optional]
+
+List of subset Accs for a term
+
+Subsets are also known as GO Slims
+
+=cut
 
 =head2 in_subset
 
   Usage   - if ($term->in_subset('goslim_prok');
   Returns - bool
   Args    - subset-name str
+
+Tests if the term belongs to a subset
 
 =cut
 
@@ -547,6 +562,7 @@ sub is_root {
     return $self->{is_root} ? 1:0;
 }
 
+=head1 TERM ASSOCIATION METHODS
 
 =head2 association_list
 

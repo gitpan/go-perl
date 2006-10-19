@@ -42,3 +42,5 @@ get_rchildren;
 print "@names\n";
 ok ("@names" eq "RENT complex chromatin remodeling complex chromatin silencing complex nuclear body nuclear speck");
 
+find_term(name=>"nuclear organisation and biogenesis");
+print term->acc,"\n";                 # OO usage

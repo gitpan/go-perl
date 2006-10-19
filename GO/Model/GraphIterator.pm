@@ -1,4 +1,4 @@
-# $Id: GraphIterator.pm,v 1.7 2005/08/18 21:22:37 cmungall Exp $
+# $Id: GraphIterator.pm,v 1.8 2006/01/12 20:25:19 cmungall Exp $
 #
 # This GO module is maintained by Chris Mungall <cjm@fruitfly.org>
 #
@@ -88,6 +88,25 @@ gets/sets direction; default is "down"
 
 set this if you dont want relationships to be traversed twice;
 this gives a more compact tree representation of the graph
+
+=cut
+
+=head2 reltype_filter
+
+  Usage   - $graphiter->reltype_filter(qw(is_a part_of))
+  Returns - array
+  Args    - array
+
+by default, all relationship types are treated as transitive, and will
+be traversed by the iterator
+
+sometimes you dont want to traverse all relations, even if they are
+transitive. For example, when answering the query "find all genes
+expressed in the embryo" you way want subtypes of embryo and parts of
+the embryo but not things that develop_from the embryo.
+
+For more details, see
+L<http://sourceforge.net/mailarchive/forum.php?thread_id=9448679&forum_id=43082>
 
 =cut
 

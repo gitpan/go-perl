@@ -16,7 +16,6 @@ EOM
 ;
     exit 1;
 }
-
 if (!@ARGV || $ARGV[0] =~ /^\-\-help/) {
     print usage();
     exit 0;
@@ -82,11 +81,21 @@ sub usage {
     print <<EOM
 go-apply-xslt XSLT-NAME [XML FILE...] [XSLTPROC-OPTIONS...]
 
-examples
+processes Obo-XML files through an XSLT pipeline
+
+examples:
 
   go-apply-xslt oboxml_to_owl my.obo-xml
-
   go-apply-xslt oboxml_filter my.obo-xml --stringparam namespace cell
+
+If your input format is not obo-xml, you can transform it in a pipeline:
+
+  go2obo_xml so.obo | go-apply-xslt text_html -
+
+Which is the same as:
+
+  go2xml -x text_html so.obo
+
 EOM
   ;
 }

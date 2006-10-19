@@ -4,7 +4,7 @@ use lib '.';
 BEGIN {
     eval { require Test; };
     use Test;    
-    plan tests => 5;
+    plan tests => 7;
 }
 # All tests must be run from the software directory;
 # make sure we are getting the modules from here:
@@ -18,6 +18,8 @@ use GO::ObjCache;
 # GO::Model::Graph must implement the GO::Builder interface; ie
 # it should be possible to pass in a graph to a parser and have it build
 # up a graph object
+
+# also tests id-mapping tag
 
 # ------------------------
 
@@ -33,3 +35,8 @@ ok(@$parents == 1);
 my $t2 = shift @$parents;
 ok($t2->name eq 'cell death');
 ok(1);
+
+my $rel = $graph->get_term('OBO_REL:derives_from');
+ok($rel);
+print $rel->transitive_over, "\n";
+ok($rel->transitive_over eq 'OBO_REL:part_of');

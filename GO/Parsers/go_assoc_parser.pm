@@ -1,4 +1,4 @@
-# $Id: go_assoc_parser.pm,v 1.8 2005/01/31 19:30:35 cmungall Exp $
+# $Id: go_assoc_parser.pm,v 1.10 2006/10/19 18:38:28 cmungall Exp $
 #
 #
 # see also - http://www.geneontology.org
@@ -14,24 +14,26 @@ package GO::Parsers::go_assoc_parser;
 
 =head1 SYNOPSIS
 
-  do not use this class directly; use GO::Parser
-
-=cut
 
 =head1 DESCRIPTION
 
-This generates Stag event streams from one of the various GO flat file
-formats (ontology, defs, xref, associations). See GO::Parser for details
+do not use this class directly; use L<GO::Parser>
 
-Examples of these files can be found at http://www.geneontology.org
+This generates Stag/XML event streams from GO association files.
+Examples of these files can be found at http://www.geneontology.org,
+an example of lines from an association file:
 
-A description of the event streams generated follows; Stag or an XML
-handler can be used to catch these events
+  SGD     S0004660        AAC1            GO:0005743      SGD:12031|PMID:2167309 TAS             C       ADP/ATP translocator    YMR056C gene    taxon:4932 20010118
+  SGD     S0004660        AAC1            GO:0006854      SGD:12031|PMID:2167309 IDA             P       ADP/ATP translocator    YMR056C gene    taxon:4932 20010118
 
- 
-=head2 GO GENE ASSOCIATION FILES
+See L<http://www.geneontology.org/GO.annotation.shtml#file>
 
-These have the prefix gene_association; eg gene_association.fb
+See
+L<http://www.godatabase.org/dev/xml/dtd/go_assoc-parser-events.dtd>
+For the DTD of the event stream that is generated
+
+The following stag-schema describes the events that are generated in
+parsing an assoc file:
 
   (assocs
    (dbset+
@@ -50,9 +52,6 @@ These have the prefix gene_association; eg gene_association.fb
          (evidence+
            (evcode "s")
            (ref "s")))))) 
- 
-
-=head1 AUTHOR
 
 =cut
 
@@ -235,6 +234,7 @@ sub parse_fh {
 	    next;
         }
 	if (!($ref =~ /:/)) {
+            # ref does not have a prefix - we assume it is medline
 	    $ref = "medline:$ref";
 	}
 	if ($with eq "IEA") {

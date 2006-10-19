@@ -1,4 +1,4 @@
-# $Id: GeneProduct.pm,v 1.8 2005/06/29 18:40:19 sshu Exp $
+# $Id: GeneProduct.pm,v 1.10 2006/09/14 00:43:56 cmungall Exp $
 #
 # This GO module is maintained by Chris Mungall <cjm@fruitfly.org>
 #
@@ -186,6 +186,13 @@ sub add_seq {
     $self->{seq_list};
 }
 
+#indicate fetching seqs has been done: no need to try even if no seq (see seq_list)
+sub _seqs_obtained {
+    my $self = shift;
+    $self->{_seqs_obtained} = shift if @_;
+    return $self->{_seqs_obtained};
+}
+
 =head2 seq_list
 
   Usage   -
@@ -202,7 +209,7 @@ sub seq_list {
     else {
         if (!defined($self->{seq_list})) {
             $self->{seq_list} =
-              $self->apph->get_seqs({product=>$self});
+              $self->apph->get_seqs({product=>$self}) unless ($self->_seqs_obtained);
         }
     }
     return $self->{seq_list};
@@ -341,7 +348,7 @@ sub to_fasta {
     # longest by default
     my $longest;
     
-    return "" unless @$seqs;
+    return "" unless @{$seqs || []};
 
     foreach my $seq (@$seqs) {
         if (!defined($longest) || $seq->length > $longest->length) {
@@ -373,10 +380,11 @@ sub to_fasta {
         }
         else {
             $desc =
-              sprintf("%s|%s symbol:%s%s %s",
+              sprintf("%s|%s symbol:%s %s %s %s",
                       uc($self->xref->xref_dbname),
                       $self->xref->xref_key,
                       $self->symbol,
+                      $self->species ? sprintf("species:%s \"%s\"", $self->species->ncbi_taxa_id, $self->species->binomial) : '-',                      
                       $hdrinfo,
                       join(" ",
                            map {$_->as_str} @{$seq->xref_list})

@@ -1,4 +1,4 @@
-# $Id: ObjFactory.pm,v 1.4 2005/05/23 22:09:59 cmungall Exp $
+# $Id: ObjFactory.pm,v 1.5 2006/04/05 22:47:56 cmungall Exp $
 #
 # This GO module is maintained by Chris Mungall <cjm@fruitfly.org>
 #
@@ -52,6 +52,7 @@ use GO::Model::Term;
 use GO::Model::Xref;
 use GO::Model::GeneProduct;
 use GO::Model::CrossProduct;
+use GO::Model::LogicalDefinition;
 use GO::Model::Graph;
 use GO::Model::Ontology;
 use GO::Model::Property;
@@ -231,6 +232,14 @@ sub create_restriction_obj {
     $restriction->apph( $self->apph );
     return $restriction;
 }
+
+sub create_logical_definition_obj {
+    my $self = shift;
+    my $ldef = GO::Model::LogicalDefinition->new(@_);
+    $ldef->apph( $self->apph );
+    return $ldef;
+}
+
 
 # experimental/deprecated code
 sub create_cross_product_obj {

@@ -17,13 +17,14 @@ sub cmt {
 
 sub prologquote {
     my $s = shift;
+    my $force = shift;
     if (ref($s)) {
         sprintf("[%s]",
                 join(',',map{prologquote($_)} @$s));
     }
     else {
         $s = '' unless defined $s;
-        if ($s =~ /^\-?[0-9]+$/) {
+        if ($s =~ /^\-?[0-9]+$/ && !$force) {
             return $s;
         }
         $s =~ s/\'/\'\'/g;
@@ -42,6 +43,18 @@ sub fact {
     my $cmt = shift;
     $self->out(sprintf("$pred(%s).",
 		       join(', ', map {prologquote($_)} @args)));
+    $self->cmt($cmt);
+    $self->nl;
+}
+
+# ensure all fields are quoted
+sub factq {
+    my $self = shift;
+    my $pred = shift;
+    my @args = @{shift||[]};
+    my $cmt = shift;
+    $self->out(sprintf("$pred(%s).",
+		       join(', ', map {prologquote($_,1)} @args)));
     $self->cmt($cmt);
     $self->nl;
 }

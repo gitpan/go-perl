@@ -1,4 +1,4 @@
-# $Id: go-perl.pod,v 1.12 2005/10/06 19:54:23 cmungall Exp $
+# $Id: go-perl.pod,v 1.13 2005/10/24 01:44:04 cmungall Exp $
 #
 # see also - http://www.geneontology.org
 #          - http://www.godatabase.org/dev
@@ -298,5 +298,5 @@ as perl itself.
 =cut
 
 package go-perl;
-$VERSION='0.04';
+$VERSION='0.05';
 1;

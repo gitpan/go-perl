@@ -1,4 +1,4 @@
-# $Id: RDFXML.pm,v 1.4 2005/04/21 19:59:58 cmungall Exp $
+# $Id: RDFXML.pm,v 1.6 2006/08/05 20:26:12 cmungall Exp $
 #
 # This GO module is maintained by Brad Marshall <bradmars@yahoo.com>
 #
@@ -7,7 +7,6 @@
 #
 # You may distribute this module under the same terms as perl itself
 
-#!/usr/local/bin/perl5.6.0 -w
 package GO::IO::RDFXML;
 
 =head1 NAME
@@ -232,7 +231,7 @@ sub draw_term {
       } else {
 	$self->{writer}->startTag('go:term', 
 				  'rdf:about'=>'http://www.geneontology.org/go#'.$term->public_acc,
-				  'n_associations'=>$term->n_deep_products
+				  #'n_associations'=>$term->n_deep_products
 				 );
       }
       $self->{writer}->startTag('go:accession');

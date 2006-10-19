@@ -23,14 +23,17 @@ use vars qw(@EXPORT);
 
 use constant OBO => 'obo';
 use constant HEADER => 'header';
+use constant SUBSETDEF => 'subsetdef';
 
 use constant TYPEDEF => 'typedef';
+use constant IS_CYCLIC => 'is_cyclic';
 use constant IS_TRANSITIVE => 'is_transitive';
 use constant IS_SYMMETRIC  => 'is_symmetric';
 use constant IS_ANTI_SYMMETRIC  => 'is_anti_symmetric';
 use constant IS_REFLEXIVE  => 'is_reflexive';
 use constant DISJOINT_FROM => 'disjoint_from';
 use constant INVERSE_OF => 'inverse_of';
+use constant TRANSITIVE_OVER => 'transitive_over';
 use constant DOMAIN => 'domain';
 use constant RANGE => 'range';
 use constant TERM => 'term';
@@ -60,6 +63,11 @@ use constant XREF_UNKNOWN => 'xref_unknown';
 use constant DBXREF => 'dbxref';
 use constant TERM_DBXREF => 'term_dbxref';
 use constant SYNONYM_TEXT => 'synonym_text';
+use constant SYNONYM_TYPE => 'synonym_type';
+
+use constant PROPERTY_VALUE => 'property_value';
+use constant VALUE => 'value';
+use constant DATATYPE => 'datatype';
 
 use constant DBSET => 'dbset';
 use constant DBNAME => 'dbname';
@@ -92,13 +100,16 @@ use constant DBXREFS => 'dbxrefs';
 @EXPORT = qw(
   OBO 
     HEADER
+             SUBSETDEF
     TYPEDEF             
+             IS_CYCLIC
              IS_TRANSITIVE
              IS_SYMMETRIC
              IS_ANTI_SYMMETRIC
              IS_REFLEXIVE
              DISJOINT_FROM
              INVERSE_OF
+             TRANSITIVE_OVER
              DOMAIN
              RANGE
     TERM             
@@ -120,6 +131,7 @@ use constant DBXREFS => 'dbxrefs';
              INTERSECTION_OF
              UNION_OF
              SYNONYM
+               SYNONYM_TYPE 
                SYNONYM_TEXT 
              ALT_ID 
              COMMENT 
@@ -129,6 +141,10 @@ use constant DBXREFS => 'dbxrefs';
              DBXREF 
                TERM_DBXREF 
 
+  INSTANCE
+             PROPERTY_VALUE
+               VALUE
+               DATATYPE
   ASSOCS
              DBSET
                DBNAME

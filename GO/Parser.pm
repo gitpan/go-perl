@@ -1,4 +1,4 @@
-# $Id: Parser.pm,v 1.13 2005/03/18 19:45:55 cmungall Exp $
+# $Id: Parser.pm,v 1.15 2006/04/20 22:48:23 cmungall Exp $
 #
 #
 # see also - http://www.geneontology.org
@@ -34,6 +34,7 @@ fetch L<GO::Model::Graph> objects using a parser:
   use GO::Parser;
   my $parser = new GO::Parser({handler=>'xml'});
   # xslt files are kept in in $ENV{GO_ROOT}/xml/xsl
+  # (if $GO_ROOT is not set, defaults to install directory)
   $parser->xslt("oboxml_to_owl"); 
   $parser->handler->file("output.owl-xml");
   $parser->parse("gene_ontology.obo");
@@ -371,8 +372,8 @@ be portable
 
 eg format: go_ont for storing graphs and metadata; for example:
 
-  !version: $Revision: 1.13 $
-  !date: $Date: 2005/03/18 19:45:55 $
+  !version: $Revision: 1.15 $
+  !date: $Date: 2006/04/20 22:48:23 $
   !editors: Michael Ashburner (FlyBase), Midori Harris (SGD), Judy Blake (MGD)
   $Gene_Ontology ; GO:0003673
    $cellular_component ; GO:0005575
@@ -576,6 +577,21 @@ sub get_parser_impl {
     return $p;
 }
 
+
+=head2 create_handler
+
+  Usage   - my $handler = GO::Parser->create_handler('obj');
+  Returns - L<GO::Handlers::base>
+  Args    - handler type [str]
+
+=cut
+
+sub create_handler {
+    my $self = shift;
+    my $type = shift || 'obj';
+    my $p = $self->new({handler=>$type});
+    return $p->handler;
+}
 
 sub load_module {
 

@@ -1,4 +1,4 @@
-# $Id: TreeIterator.pm,v 1.4 2005/01/31 19:30:34 cmungall Exp $
+# $Id: TreeIterator.pm,v 1.5 2006/03/23 23:34:22 sshu Exp $
 #
 # This GO module is maintained by Chris Mungall <cjm@fruitfly.org>
 #
@@ -335,6 +335,11 @@ sub is_selected {
     }
   }
   return 0;
+}
+
+sub reltype_filter {
+    my $self = shift;
+    $self->{'nit'}->reltype_filter(@_);
 }
 
 1;

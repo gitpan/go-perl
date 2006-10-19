@@ -19,6 +19,7 @@ GetOptions($opt,
            "id=s@",
            "partial",
            "to=s",
+           "namespace=s",
            "filter_code=s",
            "use_cache",   # auto pass-through
 	  );
@@ -29,9 +30,19 @@ if ($opt->{help}) {
 }
 
 my $filter_sub;
+
+# functional-programming style filters
 if ($opt->{filter_code}) {
     $filter_sub = eval $opt->{filter_code};
 }
+if ($opt->{namespace}) {
+    die "cannot use filter_code combined with namespace option" 
+      if $filter_sub;
+    $filter_sub = sub {
+        shift->namespace eq $opt->{namespace};
+    };
+}
+
 my $errf = $opt->{err};
 my $errhandler = Data::Stag->getformathandler('xml');
 if ($errf) {
@@ -131,12 +142,25 @@ format files). For example, a specific GO slim
 ONLY terms belonging to the subset are exported - the -partial option
 is automatically set
 
+=item -namespace NAMESPACE
+
+only terms in this namespace
+
 =item -filter_code SUBROUTINE
 
 B<advanced option>
 
 A subroutine with which the L<GO::Model::Term> object is tested for
 inclusion in the subgraph (all ancestors are automatically included)
+
+You should have an understanding of the go-perl object model before
+using this option
+
+Example:
+
+  go-filter-subset -filter_code 'sub {shift->namespace eq 'molecular_function'}' go.obo
+
+(the same things can be achieved with the -namespace option)
 
 =item -partial
 

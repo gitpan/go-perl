@@ -1,4 +1,4 @@
-# $Id: Relationship.pm,v 1.4 2005/04/19 04:35:50 cmungall Exp $
+# $Id: Relationship.pm,v 1.6 2006/10/19 18:38:28 cmungall Exp $
 #
 # This GO module is maintained by Chris Mungall <cjm@fruitfly.org>
 #
@@ -54,34 +54,63 @@ use vars qw(@ISA);
 
 @ISA = qw(GO::Model::Root Exporter);
 
+sub _valid_params {
+    return qw(acc1 acc2 is_inheritance complete type);
+}
+
+
+sub _initialize {
+    my $self = shift;
+    $self->SUPER::_initialize(@_);
+}
+
+sub acc1 {
+    my $self = shift;
+    $self->{"acc1"} = shift if @_;
+    return $self->{"acc1"};
+}
+*obj_acc = \&acc1;
+*object_acc = \&acc1;
+*parent_acc = \&acc1;
+
+sub acc2 {
+    my $self = shift;
+    $self->{"acc2"} = shift if @_;
+    return $self->{"acc2"};
+}
+*subj_acc = \&acc2;
+*subject_acc = \&acc2;
+*child_acc = \&acc2;
+
 =head2 subject_acc
 
  Title   : subject_acc
  Usage   : $obj->subject_acc($newid)
  Usage   : $currid = $obj->subject_acc()
- Synonyms: subj_acc, acc1, parent_acc
- Function: gets or sets the identifier for the parent/subject term
+ Synonyms: subj_acc, acc2, child_acc
+ Function: gets or sets the identifier for the child/subject term
  Example : 
  Returns : value of subject_acc (string)
  Args    : on set, new value (string)
 
-For example, in an "is_a" (inheritance/subsumption) relationship, the subject term of the statement below is 'dog':
+All Relationships can be thought of "subject-predicate-object"
+statements. The statement is *about* the subject, and states something
+about the relationship *to* the object.
 
-  dog is_a animal
+For example, the if we have a Relationship:
 
-This can also be thought of as the child node of an arc in a graph
-
-  animal
+  cell
     ^
     |
-    | [is_a]
+    | [part_of]
     |
-   dog
-    ^
-    |
-    | [is_a]
-    |
-  chihuahua   
+ cell nucleus
+
+This is a statement about cell nuclei in general, so "cell nucleus" is
+the subject (sometimes called the child node). The Relationship tells
+us that all cell nuclei are part_of some cell, so the object of the
+relationship (sometimes called the parent node) is "cell"
+
 
 =cut
 
@@ -95,24 +124,7 @@ This can also be thought of as the child node of an arc in a graph
  Example : 
  Returns : value of object_acc (string)
  Args    : on set, new value (string)
-
-For example, in an "is_a" (inheritance/subsumption) relationship, the object term of the statement below is 'animal':
-
-  dog is_a animal
-
-This can also be thought of as the parent node of an arc in a graph
-
-  animal
-    ^
-    |
-    | [is_a]
-    |
-   dog
-    ^
-    |
-    | [is_a]
-    |
-  chihuahua   
+ See Also: subj_acc
 
 
 =cut
@@ -134,55 +146,6 @@ constrained to come from a controlled vocabulary of relationship types
 =cut
 
 
-
-sub _initialize {
-    my $self = shift;
-    $self->SUPER::_initialize(@_);
-}
-
-#sub types {
-#    qw(is_a part_f develops_from);
-#}
-
-sub _valid_params {
-    return qw(acc1 acc2 is_inheritance type);
-}
-
-
-sub is_inheritance {
-    my $self = shift;
-    if (@_) {
-	my $is = shift;
-	$is && $self->type("isa");
-	!$is && $self->type("partof");
-    }
-    return $self->type eq "isa";
-}
-
-
-sub is_partof {
-    my $self = shift;
-    if (@_) {
-	warn("deprecated");
-	my $is = shift;
-	$is && $self->type("partof");
-	!$is && $self->type("isa");
-    }
-    return $self->type eq "partof";
-}
-
-
-sub is_developsfrom {
-    my $self = shift;
-    if (@_) {
-	warn("deprecated");
-	my $is = shift;
-	$is && $self->type("developsfrom");
-	!$is && $self->type("isa");
-    }
-    return $self->type eq "developsfrom";
-}
-
 sub type {
     my $self = shift;
     if (@_) {
@@ -194,50 +157,10 @@ sub type {
     return $self->{type} || "unknown";
 }
 
-
-
-
 sub is_obsolete {
     my $self = shift;
     $self->{is_obsolete} = shift if @_;
     return $self->{is_obsolete} ? 1:0;
-}
-
-sub acc1 {
-    my $self = shift;
-    $self->{"acc1"} = shift if @_;
-    return $self->{"acc1"};
-}
-*obj_acc = \&acc1;
-*object_acc = \&acc1;
-*parent_acc = \&acc1;
-
-sub acc2 {
-    my $self = shift;
-    $self->{"acc2"} = shift if @_;
-    return $self->{"acc2"};
-}
-*subj_acc = \&acc2;
-*subject_acc = \&acc2;
-*child_acc = \&acc2;
-
-
-sub to_idl_struct {
-    my $self = shift;
-    return 
-      {
-       parent_acc=>$self->acc1,
-       child_acc=>$self->acc2,
-       rel_type=>($self->is_inheritance ? "ISA" : "PARTOF"),
-      };
-}
-
-sub from_idl {
-    my $class = shift;
-    my $h = shift;
-    my $rel = $class->new({"acc1"=>$h->{parent_acc},
-			   "acc2"=>$h->{child_acc}});    
-    return $rel;
 }
 
 sub as_str {
@@ -245,15 +168,26 @@ sub as_str {
     sprintf("%s:%s:%s", $self->type, $self->acc1, $self->acc2);
 }
 
-
-
 sub to_ptuples {
     my $self = shift;
+    warn("deprecated");
     my ($th) =
       rearrange([qw(tuples)], @_);
     (["rel", $self->type, $self->acc1, $self->acc2]);
 }
 
+
+
+sub is_inheritance {
+    my $self = shift;
+    warn("deprecated");
+    if (@_) {
+	my $is = shift;
+	$is && $self->type("isa");
+	!$is && $self->type("partof");
+    }
+    return $self->type eq "isa";
+}
 
 1;
 

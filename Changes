@@ -58,9 +58,42 @@ VERSION 0.04
                         an ontology to deprecated go_ont format
                         (this was causing problems with cycles)
 
-2005-09-06      - [cjm] new xsl for chadoxml
+2005-09-06      - [cjm] incorporate changes to xsl for chadoxml
+                        when converting to chadoxml, only use
+                        relationship as cv.name if no namespace specified
 
 2005-10-05      - [cjm] obo_text_parser - no longer warns of missing
                                 namespace, if it is a header-only
                                 obo file
                         owl2obo fixed
+
+VERSION 0.05
+============
+
+2005-12-01      - [cjm] more docs for map2slim. made -b option safe'
+                        new convenience methods in Graph and GeneProduct
+                        added create_handler to Parser
+                        improved POD docs
+                        new test t140
+
+2006-02-12      - [cjm] added methods for new obo Typedef tag
+                        is_transitive, transitive_over etc
+                        
+2006-03-29      - [cjm] added GO::Model::LogicalDefinition
+
+2006-04-19      - [cjm] added new test for chadoxml
+
+
+
+2006-07-14      - [cjm] support for idspace tag
+
+2006-07-24      - [cjm] support for synonymtypedef tag
+                  [cjm] more synonym info from ncbi_taxonomy_parser
+2006-08-25      - [cjm] added checks to dbxref parsing
+
+2006-09-11      - [cjm] exports subsetdefs in obo format
+                        fixed definition dbxref parsing (was only getting 1 dbxref)
+
+2006-10-18      - [cjm] finalised code for GO::Model::LogicalDefinition
+                        added Relationship->complete
+                - [cjm] removed some cruft

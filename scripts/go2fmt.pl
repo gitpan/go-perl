@@ -8,7 +8,7 @@ use FileHandle;
 use Data::Stag;
 use GO::Parser;
 
-my $opt = {writer=>'xml'};
+my $opt = {handler=>'xml'};
 GetOptions($opt,
 	   "help|h",
            "obo_set",

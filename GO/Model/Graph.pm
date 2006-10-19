@@ -1,4 +1,4 @@
-# $Id: Graph.pm,v 1.17 2005/08/18 21:22:36 cmungall Exp $
+# $Id: Graph.pm,v 1.22 2006/10/19 18:38:28 cmungall Exp $
 #
 # This GO module is maintained by Chris Mungall <cjm@fruitfly.org>
 #
@@ -558,17 +558,17 @@ sub get_top_nodes {
     }
     my @topnodes = ();
     foreach my $node (@{$self->get_all_nodes}) {
-	my $parent_rels = $self->get_parent_relationships($node->acc);
-	my @parent_nodes = ();
-	foreach my $rel (@$parent_rels) {
-	    my $node = $self->get_term($rel->acc1);
-	    if ($node) {
-		push(@parent_nodes, $node);
-	    }
-	}
-	if (!@parent_nodes) {
-	    push(@topnodes, $node);
-	}
+        my $parent_rels = $self->get_parent_relationships($node->acc);
+        my @parent_nodes = ();
+        foreach my $rel (@$parent_rels) {
+            my $node = $self->get_term($rel->acc1);
+            if ($node) {
+                push(@parent_nodes, $node);
+            }
+        }
+        if (!@parent_nodes) {
+            push(@topnodes, $node);
+        }
     }
     $self->{_top_nodes} = \@topnodes;
     return \@topnodes;
@@ -623,6 +623,31 @@ sub is_leaf_node {
     return !@$child_rels;
 }
 *is_leaf_term = \&is_leaf_node;
+
+=head2 seed_nodes
+
+  Usage   - $nodes = $graph->seed_nodes;
+  Returns - GO::Model::Term listref
+  Args    - GO::Model::Term listref [optional]
+
+gets/sets the "seed" nodes/terms - these are the terms the Graph is
+started from, e.g. for building a node ancestory graph, the seed
+term would be the leaf of this graph, but not term that are expanded
+or collpased from the ancestory graph.
+
+This is mostly relevant if you are fetching your graphs from a
+database via go-db-perl
+
+See also L<GO::Model::Term>
+
+=cut
+
+sub seed_nodes {
+    my $self = shift;
+    $self->{_seed_nodes} = shift if @_;
+    return $self->{_seed_nodes};
+}
+
 
 =head2 focus_nodes
 
@@ -996,8 +1021,22 @@ sub deep_association_list {
     return \@accs;
 }
 
+
+=head2 product_list
+
+  Usage   - $prods = $g->product_list('GO:0003677')
+  Returns - listref of GO::Model::GeneProduct
+  Args    - acc (string)
+
+returns a list of distinct gene product objects B<directly>
+attached to the specified term.
+
+See also L<GO::Model::GeneProduct>
+
+=cut
+
 sub product_list {
-    my $self = shift;
+     my $self = shift;
     my $acc = shift;
     my $assocs = $self->association_list($acc) || [];
     my @prods = ();
@@ -1012,6 +1051,20 @@ sub product_list {
     return [@prods];
     
 }
+
+=head2 deep_product_list
+
+  Usage   - $prods = $g->deep_product_list('GO:0003677')
+  Returns - listref of GO::Model::GeneProduct
+  Args    - acc (string)
+
+returns a list of distinct gene product objects B<directly and indirectly>
+attached to the specified term. (ie assocs attached to the term or to
+terms subsumed by the specified term).
+
+See also L<GO::Model::GeneProduct>
+
+=cut
 
 sub deep_product_list {
     my $self = shift;
@@ -1028,6 +1081,26 @@ sub deep_product_list {
     }
     return [@prods];
     
+}
+
+=head2 deep_product_count
+
+  Usage   - $n_prods = $g->deep_product_count('GO:0003677')
+  Returns - int
+  Args    - acc (string)
+
+returns a count of distinct gene product objects B<directly and
+indirectly> attached to the specified term. performs transitive
+closure. will not count gene products twice
+
+See also L<GO::Model::GeneProduct>
+
+=cut
+
+sub deep_product_count {
+    my $self = shift;
+    my $acc = shift;
+    return scalar(@{$self->deep_product_list($acc)});
 }
 
 =head2 get_relationships
@@ -1594,6 +1667,7 @@ used by AmiGO for when a user closes a term in the graph
 sub close_below {
     my $self = shift;
     my $node = shift;
+    my $if_no_parent_to_delete = shift;
     my $acc;
     if (ref($node)) {
         if (ref($node) eq "ARRAY") {
@@ -1615,14 +1689,18 @@ sub close_below {
             push(@togo, $n);
         }
     }
+    my $p = $if_no_parent_to_delete ? $acc : undef;
     foreach my $n (@togo) {
-        $self->delete_node($n->acc);
+        $self->delete_node($n->acc, $p);
     }
 }
 
+# add 2nd optional arg: parent acc for checking if to delete the node -- Shu
+# if there are other parent(s), do not delete the node
 sub delete_node {
     my $self = shift;
     my $acc = shift;
+    my $p_acc = shift;
 
     #    delete $self->{parent_relationships_h}->{$acc};
     #    delete $self->{child_relationships_h}->{$acc};    
@@ -1631,13 +1709,18 @@ sub delete_node {
     my $par_rel_hashes = $self->{parent_relationships_h}->{$acc} || {};
     my $par_rels = [grep {$_} values(%$par_rel_hashes)];
     my $par_rel;
+    my $other_p = 0;
     foreach $par_rel (@$par_rels) {
         my $par_acc = $par_rel->acc1;
-        $self->{child_relationships_h}->{$par_acc}->{$acc} = undef;
-        delete $self->{child_relationships_h}->{$par_acc}->{$acc};
+        if (!$p_acc || $par_acc && $par_acc eq $p_acc) {
+            $self->{child_relationships_h}->{$par_acc}->{$acc} = undef;
+            delete $self->{child_relationships_h}->{$par_acc}->{$acc};
+        } else {
+            $other_p++;
+        }
     }
     # ... then from ourself
-    $self->{parent_relationships_h}->{$acc} = undef;
+    $self->{parent_relationships_h}->{$acc} = undef unless ($other_p);
 
 
     # Remove the child relationship, first from our children...
@@ -1646,16 +1729,19 @@ sub delete_node {
     my $child_rel;
     foreach $child_rel (@$child_rels) {
         my $child_acc = $child_rel->acc2;
-        $self->{parent_relationships_h}->{$child_acc}->{$acc} = undef;
-        delete $self->{parent_relationships_h}->{$child_acc}->{$acc};
+        unless ($other_p) {
+            $self->{parent_relationships_h}->{$child_acc}->{$acc} = undef;
+            delete $self->{parent_relationships_h}->{$child_acc}->{$acc};
+        }
     }
     # ... then from ourself
-    $self->{child_relationships_h}->{$acc} = undef;
+    $self->{child_relationships_h}->{$acc} = undef unless ($other_p);
 
     # Now delete ourself
-    delete $self->{nodes_h}->{$acc};
-    $self->{nodes_a}->{$acc} = undef;
-
+    unless ($other_p) {
+        delete $self->{nodes_h}->{$acc};
+        $self->{nodes_a}->{$acc} = undef;
+    }
     # This could change the top and leaf nodes, so
     # remove the cached values
     $self->{_top_nodes} = undef;
@@ -1968,6 +2054,15 @@ sub add_path {
     }
 }
 
+
+=head2 add_term
+
+ Usage   - $g->add_term($term)
+ Returns - 
+ Args    - GO::Model::Term
+
+=cut
+
 sub add_term {
     my $self = shift;
     my $term = shift;
@@ -1984,8 +2079,6 @@ sub add_term {
     $self->{nodes_h}->{$acc} = $self->{nodes_a}->{$acc};
     $term;
 }
-
-
 
 =head2 add_node
 
@@ -2063,15 +2156,49 @@ sub add_relationship {
 
     $rel->acc1 || confess($rel);
     $rel->acc2 || confess($rel);
+
+    if ($rel->complete) {
+        # EXPERIMENTAL:
+        #  an OWL/DL style logical definition (N+S conditions) is stored in the DAG as
+        #  normal Relationships but with the 'completes' tag set to true
+        #
+        #  e.g. for a logical def of "larval locomotory behaviour"
+        #     genus: locomotory behavior
+        #     differentia: during larval_stage
+        #
+        #  we would have 2 Relationships, one an is_a link to locomotory behavior
+        #    the other a during link to larval_stage (eg from fly_anatomy)
+        #  both these would be tagged complete=1
+        #  - note this is in *addition* to existing links (N conditions)
+        #
+        #  calling this method removes the logical def links and creates
+        #  a logical definition object
+        my $term = $self->get_term($rel->acc2);
+        my $ldef = $term->logical_definition;
+        if (!$ldef) {
+            $ldef = $self->apph->create_logical_definition_obj;
+            $term->logical_definition($ldef);
+        }
+        my $oacc = $rel->acc1;
+        my $type = $rel->type;
+        if ($type ne 'is_a') {
+            $ldef->add_intersection([$type,$oacc]);
+        }
+        else {
+            $ldef->add_intersection([$oacc]);
+        }
+        return;
+    }
+
     # add an index going from parent to child
     if (!$self->{child_relationships_h}->{$rel->acc1}) {
-	$self->{child_relationships_h}->{$rel->acc1} = {};
+        $self->{child_relationships_h}->{$rel->acc1} = {};
     }
     $self->{child_relationships_h}->{$rel->acc1}->{$rel->acc2} = $rel;
 
     # add an index going from child to parent
     if (!$self->{parent_relationships_h}->{$rel->acc2}) {
-	$self->{parent_relationships_h}->{$rel->acc2} = {};
+        $self->{parent_relationships_h}->{$rel->acc2} = {};
     }
     $self->{parent_relationships_h}->{$rel->acc2}->{$rel->acc1} = $rel;
 
@@ -2176,6 +2303,56 @@ sub add_trailing_edge {
     $self->{trailing_edges}->{$acc}->{$id} = 1;
 }
 
+sub infer_logical_definitions {
+    my $self = shift;
+    my $terms = $self->get_all_terms;
+    $self->infer_logical_definition_for_term($_->acc)
+      foreach @$terms;
+}
+
+# EXPERIMENTAL:
+#  an OWL/DL style logical definition (N+S conditions) is stored in the DAG as
+#  normal Relationships but with the 'completes' tag set to true
+#
+#  e.g. for a logical def of "larval locomotory behaviour"
+#     genus: locomotory behavior
+#     differentia: during larval_stage
+#
+#  we would have 2 Relationships, one an is_a link to locomotory behavior
+#    the other a during link to larval_stage (eg from fly_anatomy)
+#  both these would be tagged complete=1
+#  - note this is in *addition* to existing links (N conditions)
+#
+#  calling this method removes the logical def links and creates
+#  a logical definition object
+sub infer_logical_definition_for_term {
+    my $self = shift;
+    my $acc = shift;
+    my $term = $self->get_term($acc);
+    my $parent_rels = $self->get_parent_relationships($acc);
+    my @isects = grep {$_->complete} @$parent_rels;
+    warn("assertion warning: $acc has 1 logical def link") if @isects == 1;
+    return unless @isects > 1;
+    my $ldef;
+    if (@isects) {
+        $ldef = $self->apph->create_logical_definition_obj;
+        $term->logical_definition($ldef);
+        foreach my $isect (@isects) {
+            # hack: todo; test if genuinely anonymous
+            my $oacc = $isect->object_acc;
+            my $rel = $isect->type;
+            if ($rel ne 'is_a') {
+                $ldef->add_intersection([$_->type,$oacc]);
+            }
+            else {
+                $ldef->add_intersection([$oacc]);
+            }
+        }
+    }
+    return $ldef;
+    
+}
+
 sub set_category {
     my ($self, $id, $category) = @_;
 }
@@ -2269,7 +2446,7 @@ sub to_text_output {
     $it = $self->create_iterator unless $it;
     $it->no_duplicates(1);
     if ($opts->{isa_only}) {
-        $it->reltype_filter("isa");
+        $it->reltype_filter("is_a");
     }
     if ($fmt eq "gotext") {
         while (my $ni = $it->next_node_instance) {

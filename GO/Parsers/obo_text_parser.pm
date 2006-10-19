@@ -1,4 +1,4 @@
-# $Id: obo_text_parser.pm,v 1.24 2005/10/06 19:10:35 cmungall Exp $
+# $Id: obo_text_parser.pm,v 1.31 2006/09/11 22:48:01 cmungall Exp $
 #
 #
 # see also - http://www.geneontology.org
@@ -61,6 +61,7 @@ sub parse_fh {
     while(<$fh>) {
 	chomp;
 
+
         tr [\200-\377]
           [\000-\177];   # see 'man perlop', section on tr/
         # weird ascii characters should be excluded
@@ -73,7 +74,7 @@ sub parse_fh {
 
         s/^\!.*//;
         s/[^\\]\!.*//;
-        s/[^\\]\#.*//;
+        #s/[^\\]\#.*//;
         s/^\s+//;
         s/\s+$//;
 	next unless $_;
@@ -93,7 +94,9 @@ sub parse_fh {
 	    else {
                 if (!$namespace_set) {
                     if (!$namespace) {
-                        $self->parse_err("missing namespace for ID: $id");
+                        if ($stanza ne 'instance') {
+                            $self->parse_err("missing namespace for ID: $id");
+                        }
                     }
                     else {
                         $self->event(NAMESPACE, $namespace);
@@ -130,7 +133,36 @@ sub parse_fh {
                         $self->parse_err("subsetdef: expect ID \"NAME\", got: $val");
                     }
                 }
+                if ($tag eq 'synonymtypedef') {
+                    if ($val =~ /(\S+)\s+\"(.*)\"\s*(.*)/) {
+                        my $stname = $1;
+                        my $stdef = $2;
+                        my $scope = $3;
+                        $val =
+                          [[NAME,$stname],
+                           [DEFSTR,$stdef],
+                           ($scope ? ['scope', $scope] : ())];
+
+                    }
+                    else {
+                        $self->parse_err("subsetdef: expect ID \"NAME\", got: $val");
+                    }
+                }
+                if ($tag eq 'idspace') {
+                    my ($idspace,$global,@rest) = split(' ',$val);
+                    if (!$global) {
+                        $self->parse_err("id-mapping requires two columns");
+                    }
+                    $val =
+                      [['local',$idspace],
+                       ['global',$global],
+                       (@rest ? [COMMENT,join(' ',@rest)] : ()),
+                      ];
+                }
+
                 $self->event($tag=>$val);
+
+                # post-processing
                 if ($tag eq 'default-namespace') {
                     $namespace = $val
                       unless $namespace;
@@ -153,7 +185,7 @@ sub parse_fh {
             else {
                 $self->parse_err("illegal header entry: $_");
             }
-        }
+        } # END OF IN-HEADER
 	elsif (/^([\w\-]+)\:\s*(.*)/) {  # tag-val pair
 	    my ($tag, $val) = ($1,$2);
             my $qh;
@@ -190,7 +222,21 @@ sub parse_fh {
 	    }
 	    elsif ($tag eq INTERSECTION_OF) {
 		my ($type, $id) = split(' ', $val2);
-		$val = [[TYPE,$type],[TO,$id]];
+                if ($id_remap_h{$type}) {
+                    $type = $id_remap_h{$type};
+                }
+		if ($id) {
+                    $val = [[TYPE,$type],[TO,$id]];
+                }
+                else {
+                    $id = $type;
+                    $val = [[TO,$id]];
+                }
+	    }
+	    elsif ($tag eq INVERSE_OF || $tag eq TRANSITIVE_OVER) {
+                if ($id_remap_h{$val}) {
+                    $val = $id_remap_h{$val};
+                }
 	    }
 	    elsif ($tag eq XREF) {
                 $tag = XREF_ANALOG;
@@ -204,6 +250,28 @@ sub parse_fh {
 	    elsif ($tag eq XREF_UNKNOWN) {
 		my $dbxref = dbxref($val);
 		$val = $dbxref->[1];
+	    }
+	    elsif ($tag eq PROPERTY_VALUE) {
+                if ($val =~ /^(\S+)\s+(\".*)/) {
+                    # first form
+                    # property_value: relation "literal value" xsd:datatype
+                    my $type = $1;
+                    my $rest = $2;
+                    my ($to, $datatype) = extract_quotelike($rest);
+                    $to =~ s/^\"//;
+                    $to =~ s/\"$//;
+                    $datatype =~ s/^\s+//;
+                    $val = [[TYPE,$type],
+                            [VALUE,$to],
+                            [DATATYPE,$datatype]];
+                }
+                else {
+                    # second form
+                    # property_value: relation ToID
+                    my ($type,$to) = split(' ',$val);
+                    $val = [[TYPE,$type],
+                            [TO,$to]];
+                }
 	    }
             elsif ($tag eq NAMESPACE) {
                 if ($force_namespace) {
@@ -238,6 +306,8 @@ sub parse_fh {
 		  extract_qstr($val);
                 if (@$extra_quals) {
                     $scope = shift @$extra_quals;
+                    $scope = lc($scope);
+                    $qh->{synonym_type} = shift @$extra_quals if @$extra_quals;
                 }
                 if ($qh->{scope}) {
                     if ($scope) {
@@ -252,6 +322,7 @@ sub parse_fh {
                 else {
                     $qh->{scope} = $scope;
                 }
+            
 		$val =
 		  [[SYNONYM_TEXT,$syn],
 		   (map {dbxref($_)} @$parts)];
@@ -310,7 +381,7 @@ sub parse_fh {
     # duplicated code! check final event
     if (!$namespace_set) {
         if (!$namespace && $stanza_count) {
-            $self->parse_err("missing namespace for ID: $id");
+            #$self->parse_err("missing namespace for ID: $id");
         }
         else {
             $self->event(NAMESPACE, $namespace);
@@ -362,10 +433,19 @@ sub extract_qstr {
     }
 
     my @extra = ();
-    # eg synonym: "foo" EXACT [...]
-    if ($rem =~ /(\w+)\s+(\[.*)/) {
+
+    # synonyms can have two words following quoted part
+    # before dbxref section
+    #  - two
+    if ($rem =~ /(\w+)\s+(\w+)\s+(\[.*)/) {
+        $rem = $3;
+        push(@extra,$1,$2);
+    }
+    elsif ($rem =~ /(\w+)\s+(\[.*)/) {
         $rem = $2;
-        push(@extra,split(' ',$1));
+        push(@extra,$1);
+    }
+    else {
     }
 
     my @parts = ();
@@ -395,6 +475,7 @@ sub split_on_comma {
     return map {s/\\//g;$_} @parts;
 }
 
+# turns a DB:ACC string into an obo-xml dbxref element
 sub dbxref {
     my $str = shift;
     $str =~ s/\\//g;
@@ -405,10 +486,77 @@ sub dbxref {
     }
     my ($db, @rest) = split(/:/, $str);
     my $acc = join(':',@rest);
+    $db =~ s/^\s+//;
+    if ($db eq 'http' && $acc =~ /^\/\//) {
+        # dbxref is actually a URI
+        $db = 'URL';
+        $acc =~ simple_escape($acc);
+        $acc =~ s/\s/\%20/g;
+        $acc = "http:$acc";
+    }
+    else {
+        $db=escape($db);
+        $acc=escape($acc);
+    }
+    #$db =~ s/\s+/_/g;  # HumanDO.obo has spaces in xref
+    #$acc =~ s/\s+/_/g;
+    $db = 'NULL' unless $db;
+    $acc = 'NULL' unless $acc;
     [DBXREF,[[ACC,$acc],
               [DBNAME,$db],
               defined $name ? [NAME,$name] : ()
              ]];
 }
+
+# lifted from CGI::Util
+
+our $EBCDIC = "\t" ne "\011";
+# (ord('^') == 95) for codepage 1047 as on os390, vmesa
+our @E2A = (
+   0,  1,  2,  3,156,  9,134,127,151,141,142, 11, 12, 13, 14, 15,
+  16, 17, 18, 19,157, 10,  8,135, 24, 25,146,143, 28, 29, 30, 31,
+ 128,129,130,131,132,133, 23, 27,136,137,138,139,140,  5,  6,  7,
+ 144,145, 22,147,148,149,150,  4,152,153,154,155, 20, 21,158, 26,
+  32,160,226,228,224,225,227,229,231,241,162, 46, 60, 40, 43,124,
+  38,233,234,235,232,237,238,239,236,223, 33, 36, 42, 41, 59, 94,
+  45, 47,194,196,192,193,195,197,199,209,166, 44, 37, 95, 62, 63,
+ 248,201,202,203,200,205,206,207,204, 96, 58, 35, 64, 39, 61, 34,
+ 216, 97, 98, 99,100,101,102,103,104,105,171,187,240,253,254,177,
+ 176,106,107,108,109,110,111,112,113,114,170,186,230,184,198,164,
+ 181,126,115,116,117,118,119,120,121,122,161,191,208, 91,222,174,
+ 172,163,165,183,169,167,182,188,189,190,221,168,175, 93,180,215,
+ 123, 65, 66, 67, 68, 69, 70, 71, 72, 73,173,244,246,242,243,245,
+ 125, 74, 75, 76, 77, 78, 79, 80, 81, 82,185,251,252,249,250,255,
+  92,247, 83, 84, 85, 86, 87, 88, 89, 90,178,212,214,210,211,213,
+  48, 49, 50, 51, 52, 53, 54, 55, 56, 57,179,219,220,217,218,159
+	 );
+
+sub escape {
+  shift() if @_ > 1 and ( ref($_[0]) || (defined $_[1] && $_[0] eq $CGI::DefaultClass));
+  my $toencode = shift;
+  return undef unless defined($toencode);
+  # force bytes while preserving backward compatibility -- dankogai
+  $toencode = pack("C*", unpack("C*", $toencode));
+    if ($EBCDIC) {
+      $toencode=~s/([^a-zA-Z0-9_.-])/uc sprintf("%%%02x",$E2A[ord($1)])/eg;
+    } else {
+      $toencode=~s/([^a-zA-Z0-9_.-])/uc sprintf("%%%02x",ord($1))/eg;
+    }
+  return $toencode;
+}
+
+sub simple_escape {
+  return unless defined(my $toencode = shift);
+  $toencode =~ s{&}{&amp;}gso;
+  $toencode =~ s{<}{&lt;}gso;
+  $toencode =~ s{>}{&gt;}gso;
+  $toencode =~ s{\"}{&quot;}gso;
+# Doesn't work.  Can't work.  forget it.
+#  $toencode =~ s{\x8b}{&#139;}gso;
+#  $toencode =~ s{\x9b}{&#155;}gso;
+  $toencode;
+}
+
+
 
 1;

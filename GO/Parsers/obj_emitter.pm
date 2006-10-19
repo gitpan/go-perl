@@ -1,4 +1,4 @@
-# $Id: obj_emitter.pm,v 1.2 2005/02/11 05:44:56 cmungall Exp $
+# $Id: obj_emitter.pm,v 1.3 2006/08/13 02:02:37 cmungall Exp $
 #
 #
 # see also - http://www.geneontology.org
@@ -73,7 +73,11 @@ sub emit_graph {
 
 sub emit_term {
     my ($self, $t, $g) = @_;
-    $self->start_event(TERM);
+    my $stanza = TERM;
+    if ($t->is_relationship_type) {
+        $stanza = TYPEDEF;
+    }
+    $self->start_event($stanza);
 
     my $parent_rels = $g->get_parent_relationships($t->acc);
     foreach my $xtag (@TAGS) {
@@ -158,7 +162,7 @@ sub emit_term {
         }
     }
 
-    $self->end_event(TERM);
+    $self->end_event($stanza);
 }
 
 sub dbxref {

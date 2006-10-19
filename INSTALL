@@ -282,6 +282,40 @@ setenv GO_ROOT $HOME/go-dev
 
 It is a good idea to put this in your startup file
 
+Installing from CVS
+-------------------
+
+You can get the latest bleeding-edge version of go-perl from the
+go-dev cvs tree. See http://www.godatabase.org/dev for details
+
+Once you have checked out go-dev/go-perl, do the usual thing (if
+you're installing from cvs it's assumed you're a bleeding edge user
+and know how to do this):
+
+cd ~/cvs/go-dev/go-perl
+perl Makefile.PL
+make test
+setenv GO_ROOT ~/cvs/go-dev
+setenv PERL5LIB "$PERL5LIB:~/cvs/go-dev/go-perl"
+
+The assumption is that if you are using cvs you want to use the
+working copy; if you want to install from cvs, instead do the
+following steps:
+
+cd go-dev/go-perl
+perl Makefile.PL
+make GO/xsl
+make test
+make install
+
+The "make GO/xsl" stage is not strictly necessary; if you omit it you
+will get warnings. You can ignore these, but if you ever want to use
+the XSL you will need to check out go-dev/xml and set the GO_ROOT
+environment variaable as above.
+
+Note that none of this is necessary if you install from CPAN - the
+installation of the XSL is taken care of automatically
+
 Documentation
 -------------
 
@@ -293,6 +327,7 @@ Mailing List
 ------------
 
 http://lists.sourceforge.net/lists/listinfo/gmod-ontol-sw-dev
+
 
 Installing Documentation Locally
 --------------------------------

@@ -1,4 +1,4 @@
-# $Id: mgi_assoc_parser.pm,v 1.2 2005/04/19 04:35:50 cmungall Exp $
+# $Id: mgi_assoc_parser.pm,v 1.3 2006/08/05 20:26:12 cmungall Exp $
 #
 #
 # see also - http://www.geneontology.org
@@ -119,11 +119,13 @@ sub parse_fh {
                 }
                 elsif (/^anatomy:(.*)/) {
                     my @ids = _parse_ids($1);
-                    $self->event(in=>$_) foreach @ids;
+                    $self->event(property_value=>[[type=>'located_in'],
+                                                  [to=>$_]]) foreach @ids;
                 }
                 elsif (/^cell type:(.*)/) {
                     my @ids = _parse_ids($1);
-                    $self->event(in=>$_) foreach @ids;
+                    $self->event(property_value=>[[type=>'located_in'],
+                                                  [to=>$_]]) foreach @ids;
                 }
                 else {
                 }

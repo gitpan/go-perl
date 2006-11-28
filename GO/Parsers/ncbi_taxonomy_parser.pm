@@ -1,4 +1,4 @@
-# $Id: ncbi_taxonomy_parser.pm,v 1.4 2006/08/05 20:26:13 cmungall Exp $
+# $Id: ncbi_taxonomy_parser.pm,v 1.6 2006/10/27 18:24:13 cmungall Exp $
 #
 #
 # see also - http://www.geneontology.org
@@ -145,9 +145,10 @@ sub emit_term {
     $self->start_event(TERM);
     $self->event(ID,$id);
     my $name = pop @{$h->{'scientific name'}};
-    my $gname = pop @{$h->{'genbank common name'}};
+    my ($gname) = @{$h->{'genbank common name'} || []};
     if (!$name) {
         $name = $gname;
+        pop @{$h->{'genbank common name'}} if $gname;
     }
     if ($self->{name_h}->{$name}) {
         $name .= " [$id]"; # force unique

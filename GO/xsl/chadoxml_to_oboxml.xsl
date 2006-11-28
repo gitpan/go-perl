@@ -1,3 +1,5 @@
+DEPRECATED< NOT COMPLETE
+
 <?xml version = "1.0"?>
 <xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 
@@ -55,6 +57,20 @@
         </dbxref_id>
         <cv_id>relationship</cv_id>
         <name>is_a</name>
+        <is_relationship_type>1</is_relationship_type>
+      </cvterm>
+
+      <!-- required for owl compatibility, and compatibility
+           with advanced features of obo 1.2 format -->
+      <cvterm op="force" id="intersection_of">
+        <dbxref_id>
+          <dbxref>
+            <db_id>internal</db_id>
+            <accession>intersection_of</accession>
+          </dbxref>
+        </dbxref_id>
+        <cv_id>cvterm_property_type</cv_id>
+        <name>intersection_of</name>
         <is_relationship_type>1</is_relationship_type>
       </cvterm>
 
@@ -172,25 +188,29 @@
     </cvterm_relationship>
   </xsl:template>
 
+  <xsl:template match="type">
+    <cvterm op="lookup">
+      <cv_id>relationship</cv_id>
+      <name>
+        <xsl:value-of select="."/>
+      </name>
+      <is_relationship_type>1</is_relationship_type>
+      <!-- dbxref is the same as the name for relationships -->
+      <dbxref_id>
+        <dbxref>
+          <db_id>obo_rel</db_id>
+          <accession>
+            <xsl:value-of select="type"/>
+          </accession>
+        </dbxref>
+      </dbxref_id>
+    </cvterm>
+  </xsl:template>
+
   <xsl:template match="relationship">
     <cvterm_relationship>
       <type_id>
-        <cvterm op="lookup">
-          <cv_id>relationship</cv_id>
-          <name>
-            <xsl:value-of select="type"/>
-          </name>
-          <is_relationship_type>1</is_relationship_type>
-          <!-- dbxref is the same as the name for relationships -->
-          <dbxref_id>
-            <dbxref>
-              <db_id>obo_rel</db_id>
-              <accession>
-                <xsl:value-of select="type"/>
-              </accession>
-            </dbxref>
-          </dbxref_id>
-        </cvterm>
+        <xsl:apply-templates select="type"/>
       </type_id>
       <subject_id>
         <cvterm op="lookup">
@@ -205,6 +225,60 @@
             <xsl:apply-templates select="to" mode="dbxref"/>
           </dbxref_id>
         </cvterm>
+      </object_id>
+    </cvterm_relationship>
+  </xsl:template>
+
+  <!-- see obo1.2 docs for more info on this tag -->
+  <!-- intersection_ofs (aka logical definitions) are
+       recorded in the DAG as a collection of intersection_of
+       relationships between the defined term and either
+       (a) another term (the genus, or generic term)
+       (b) an anonymous term, itself linked to another term by a
+           relationship of some type (a differentium)
+       -->
+  <xsl:template match="intersection_of">
+    <cvterm_relationship>
+      <type_id>intersection_of</type_id>
+      <subject_id>
+        <cvterm op="lookup">
+          <dbxref_id>
+            <xsl:apply-templates select="../id" mode="dbxref"/>
+          </dbxref_id>
+        </cvterm>
+      </subject_id>
+      <object_id>
+        <xsl:choose>
+          <xsl:when test="type">
+            <!-- anonymous term -->
+            <cvterm>
+              <dbxref_id>
+                <xsl:call-template name="make-anon-term">
+                  <xsl:with-param name="anon_id" select="concat(../id)"/>
+                </xsl:call-template>
+              </dbxref_id>
+              <cvterm_relationship>
+                <type_id>
+                  <xsl:apply-templates select="type"/>
+                </type_id>
+                <object_id>
+                  <cvterm op="lookup">
+                    <dbxref_id>
+                      <xsl:apply-templates select="to" mode="dbxref"/>
+                    </dbxref_id>
+                  </cvterm>
+                </object_id>
+              </cvterm_relationship>
+            </cvterm>
+          </xsl:when>
+          <xsl:otherwise>
+            <cvterm op="lookup">
+              <dbxref_id>
+                <xsl:apply-templates select="to" mode="dbxref"/>
+              </dbxref_id>
+            </cvterm>
+          </xsl:otherwise>
+        </xsl:choose>
       </object_id>
     </cvterm_relationship>
   </xsl:template>

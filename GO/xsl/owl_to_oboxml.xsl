@@ -283,7 +283,7 @@
       </xsl:when>
       <xsl:otherwise>
         <xsl:message>
-          <xsl:text>Cannot resolve ID</xsl:text>
+          <xsl:text>Cannot resolve ID: </xsl:text>
           <xsl:copy-of select="."/>
         </xsl:message>
       </xsl:otherwise>

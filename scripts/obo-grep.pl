@@ -7,8 +7,9 @@ my $noheader;
 my $negate;
 while ($ARGV[0] =~ /^\-.+/) {
     my $opt = shift @ARGV;
-    if ($opt eq '-t' || $opt eq '--tag') {
-        $tag_h{shift @ARGV} = 1;
+    if ($opt eq '-h' || $opt eq '--help') {
+        print usage();
+        exit 0;
     }
     if ($opt eq '-r' || $opt eq '--regexp') {
         $regexp = shift @ARGV;
@@ -62,3 +63,25 @@ default-namespace: none
 EOM
 
 }
+
+sub scriptname {
+    my @p = split(/\//,$0);
+    pop @p;
+}
+
+
+sub usage {
+    my $sn = scriptname();
+
+    <<EOM;
+$sn [--noheader] [--negate] [--r REGULAR-EXPRESSION] OBO-FILE
+
+filters out stanzas from obo files
+
+Example:
+
+$sn -r 'def:.*transcript' go.obo
+
+EOM
+}
+

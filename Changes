@@ -97,3 +97,9 @@ VERSION 0.05
 2006-10-18      - [cjm] finalised code for GO::Model::LogicalDefinition
                         added Relationship->complete
                 - [cjm] removed some cruft
+
+VERSION 0.06
+============
+
+No code changes in this release; the 0.05 CPAN release erroneously
+contained out of date copies of the XSL files

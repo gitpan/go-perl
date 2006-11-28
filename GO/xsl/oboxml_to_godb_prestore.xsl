@@ -32,6 +32,7 @@
         <map>source_db/association.source_db_id=db.id</map>
         <map>type/synonym.type_id=term.id</map>
         <map>parentfk:term2term.term2_id</map>
+        <map>subset/term_subset.subset_id=term.id</map>
       </dbstag_metadata>
       <xsl:apply-templates select="*/source"/>
 
@@ -57,12 +58,15 @@
         </term_definition>
       </term>
 
+      <xsl:apply-templates select="*/header/subsetdef"/>
+
       <!-- load relationships before terms -->
       <xsl:apply-templates select="*/typedef"/>
       <xsl:apply-templates select="*/term"/>
       <xsl:apply-templates select="*/term/is_a"/>
       <xsl:apply-templates select="*/typedef/is_a"/>
       <xsl:apply-templates select="*/term/relationship"/>
+      <xsl:apply-templates select="*/term/intersection_of"/>
       <xsl:apply-templates select="assocs/dbset/prod"/>
     </godb_prestore>
   </xsl:template>
@@ -71,6 +75,20 @@
     <source_audit>
       <xsl:copy-of select="./*"/>
     </source_audit>
+  </xsl:template>
+
+  <xsl:template match="subsetdef">
+    <term>
+      <acc>
+        <xsl:value-of select="id"/>
+      </acc>
+      <name>
+        <xsl:value-of select="name"/>
+      </name>
+      <term_type>
+        <xsl:text>subset</xsl:text>
+      </term_type>
+    </term>
   </xsl:template>
 
   <xsl:template match="term">
@@ -125,6 +143,7 @@
       </xsl:if>
       <xsl:apply-templates select="def"/>
       <xsl:apply-templates select="synonym"/>
+      <xsl:apply-templates select="subset"/>
       <xsl:apply-templates select="alt_id"/>
       <xsl:apply-templates select="xref_analog"/>
     </term>
@@ -231,6 +250,52 @@
     </term2term>
   </xsl:template>
 
+  <!-- see obo1.2 docs for more info on this tag -->
+  <!-- intersection_ofs (aka logical definitions) are
+       recorded in the DAG as a collection of intersection_of
+       relationships between the defined term and either
+       (a) another term (the genus, or generic term)
+       (b) an anonymous term, itself linked to another term by a
+           relationship of some type (a differentium)
+       -->
+  <xsl:template match="intersection_of">
+    <term2term>
+      <complete>1</complete>
+      <type>
+        <term>
+          <acc>
+            <xsl:choose>
+              <xsl:when test="type">
+                <xsl:value-of select="type"/>
+              </xsl:when>
+              <xsl:otherwise>
+                <xsl:text>is_a</xsl:text>
+              </xsl:otherwise>
+            </xsl:choose>
+          </acc>
+        </term>
+      </type>
+
+      <!-- subject -->
+      <term2>
+        <term>
+          <acc>
+            <xsl:value-of select="../id"/>
+          </acc>
+        </term>
+      </term2>
+
+      <!-- object -->
+      <term1>
+        <term>
+          <acc>
+            <xsl:value-of select="to"/>
+          </acc>
+        </term>
+      </term1>
+    </term2term>
+  </xsl:template>
+
   <xsl:template match="synonym">
     <term_synonym>
       <term_synonym>
@@ -250,6 +315,18 @@
         </type>
       </xsl:if>
     </term_synonym>
+  </xsl:template>
+    
+  <xsl:template match="subset">
+    <term_subset>
+      <subset>
+        <term>
+          <acc>
+            <xsl:value-of select="."/>
+          </acc>
+        </term>
+      </subset>
+    </term_subset>
   </xsl:template>
     
   <xsl:template match="alt_id">

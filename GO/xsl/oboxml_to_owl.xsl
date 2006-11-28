@@ -4,7 +4,7 @@
   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" 
   xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#" 
   xmlns:owl="http://www.w3.org/2002/07/owl#" 
-  xml:base="http://www.geneontology.org/owl/">
+  xml:base="http://www.geneontology.org/owl">
   
   <xsl:output indent="yes" method="xml"/>
 
@@ -16,8 +16,8 @@
   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" 
   xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#" 
   xmlns:owl="http://www.w3.org/2002/07/owl#" 
-  xmlns="http://www.geneontology.org/owl/#" 
-  xml:base="http://www.geneontology.org/owl/">
+  xmlns="http://www.geneontology.org/owl#" 
+  xml:base="http://www.geneontology.org/owl">
       <owl:Ontology rdf:about=""/>
       <xsl:apply-templates select="obo/term"/>
       <xsl:apply-templates select="obo/typedef"/>
@@ -27,7 +27,7 @@
   <xsl:template match="term">
     <xsl:element name="owl:Class">
       <xsl:apply-templates mode="rdf-id" select="id"/>
-      <rdfs:label>
+      <rdfs:label xml:lang="en">
         <xsl:value-of select="name"/>
       </rdfs:label>
       <xsl:apply-templates select="def/defstr"/>
@@ -66,6 +66,7 @@
       <rdfs:label>
         <xsl:value-of select="name"/>
       </rdfs:label>
+      <xsl:apply-templates select="def/defstr"/>
       <xsl:for-each select="is_a">
         <rdfs:subPropertyOf>
           <xsl:apply-templates mode="rdf-resource" select="."/>
@@ -75,11 +76,6 @@
 
   <xsl:template match="is_a">
     <xsl:if test="not(@novel_inferred) and not(@problematic_inferred)">
-      <xsl:comment>
-        <xsl:text> </xsl:text>
-        <xsl:value-of select="key('terms',.)/name"/>
-        <xsl:text> </xsl:text>
-      </xsl:comment>
       <rdfs:subClassOf>
         <xsl:apply-templates mode="rdf-resource" select="."/>
       </rdfs:subClassOf>
@@ -94,7 +90,7 @@
     
   <xsl:template match="intersection_of">
     <xsl:choose>
-      <xsl:when test="type='is_a'">
+      <xsl:when test="type='is_a' or not(type)">
         <owl:Class>
           <xsl:apply-templates mode="rdf-about" select="to"/>
         </owl:Class>
@@ -116,11 +112,6 @@
         <xsl:apply-templates mode="rdf-resource" select="to"/>
       </owl:someValuesFrom>
     </owl:Restriction>
-    <xsl:comment>
-      <xsl:text> </xsl:text>
-      <xsl:value-of select="key('terms', to)/name"/>
-      <xsl:text> </xsl:text>
-    </xsl:comment>
   </xsl:template>
   
   <xsl:template match="text()|@*">

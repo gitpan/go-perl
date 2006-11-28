@@ -57,6 +57,7 @@ parsing an assoc file:
 
 use Exporter;
 use base qw(GO::Parsers::base_parser Exporter);
+#use Text::Balanced qw(extract_bracketed);
 use GO::Parsers::ParserEventNames;
 
 use Carp;
@@ -105,7 +106,9 @@ sub parse_fh {
         $PRODTYPE,
         $PRODTAXA,
         $ASSOCDATE,
-	$SOURCE_DB) = @COLS;
+	$SOURCE_DB,
+        $TERM_REFINEMENT,   # experimental! 
+       ) = @COLS;
 
     my @mandatory_cols = ($PRODDB, $PRODACC, $TERMACC, $EVCODE);
 
@@ -222,7 +225,8 @@ sub parse_fh {
         $prodtype,
         $prodtaxa,
         $assocdate,
-	$source_db) = @vals;
+	$source_db,
+        $term_refinement) = @vals;
 
 
 #	if (!grep {$aspect eq $_} qw(P C F)) {
@@ -359,6 +363,9 @@ sub parse_fh {
 	    $self->event(IS_NOT, $is_not || '0');
 	    $self->event(QUALIFIER, $_) foreach @quals;
 	    $self->event(ASPECT, $aspect);
+            if ($term_refinement) {
+                #$self->parse_term_refinement($term_refinement);
+            }
 	}
 	$self->start_event(EVIDENCE);
 	$self->event(EVCODE, $evcode);
@@ -397,20 +404,27 @@ sub parse_fh {
            $prodtype,
            $prodtaxa,
            $assocdate,
-           $source_db
+           $source_db,
+           $term_refinement,
           );
     }
     $fh->close;
 
     $self->pop_stack_to_depth(0);
-#    $self->end_event("assoc");
-#    $self->end_event("prod");
-#    $self->end_event("dbset");
-#    use Data::Dumper;
-#    print Dumper $self->handler->{node};
-#    $self->end_event("assocs");
 }
 
+#sub parse_term_refinement {
+#    my $self = shift;
+#    my $slotstr = shift;
+#    $slotstr =~ s/\s+//;
+
+#    my $idstr, $relation;
+
+#    while (($idstr, $slotstr, $relation) = extract_bracketed($slotstr, '()')) {
+#        $self->parse_term_refinement($idstr);
+        
+#    }
+#}
 
 1;
 

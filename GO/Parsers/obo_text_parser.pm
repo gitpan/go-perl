@@ -1,4 +1,4 @@
-# $Id: obo_text_parser.pm,v 1.31 2006/09/11 22:48:01 cmungall Exp $
+# $Id: obo_text_parser.pm,v 1.41 2007/09/12 03:07:30 cmungall Exp $
 #
 #
 # see also - http://www.geneontology.org
@@ -56,6 +56,17 @@ sub parse_fh {
     my $force_namespace = $self->force_namespace;
     my $usc = $self->replace_underscore;
     my %id_remap_h = ();
+
+    # temporary hack...
+    if ($ENV{OBO_IDMAP}) {
+        my @parts = split(/\;/,$ENV{OBO_IDMAP});
+        foreach (@parts) {
+            if (/(.*)=(.*)/) {
+                $id_remap_h{$1} = $2;
+            }
+        }
+    }
+
     my $default_id_prefix;
 
     while(<$fh>) {
@@ -95,7 +106,7 @@ sub parse_fh {
                 if (!$namespace_set) {
                     if (!$namespace) {
                         if ($stanza ne 'instance') {
-                            $self->parse_err("missing namespace for ID: $id");
+                            #$self->parse_err("missing namespace for ID: $id");
                         }
                     }
                     else {
@@ -139,8 +150,8 @@ sub parse_fh {
                         my $stdef = $2;
                         my $scope = $3;
                         $val =
-                          [[NAME,$stname],
-                           [DEFSTR,$stdef],
+                          [[ID,$stname],
+                           [NAME,$stdef],
                            ($scope ? ['scope', $scope] : ())];
 
                     }
@@ -190,8 +201,10 @@ sub parse_fh {
 	    my ($tag, $val) = ($1,$2);
             my $qh;
             ($val, $qh) = extract_quals($val);
+	    #$val =~ s/\\//g;
 	    my $val2 = $val;
 	    $val2 =~ s/\\,/,/g;
+	    $val2 =~ s/\\//g;
             if ($tag eq ID) {
                 if ($id_remap_h{$val}) {
                     $val = $id_remap_h{$val};
@@ -204,6 +217,7 @@ sub parse_fh {
             }
             elsif ($tag eq NAME) {
                 # replace underscore in name
+                $val = $val2;
                 if ($usc) {
                     $val =~ s/_/$usc/g;
                 }
@@ -220,7 +234,7 @@ sub parse_fh {
                 }
 		$val = [[TYPE,$type],[TO,$id]];
 	    }
-	    elsif ($tag eq INTERSECTION_OF) {
+	    elsif ($tag eq INTERSECTION_OF || $tag eq UNION_OF) {
 		my ($type, $id) = split(' ', $val2);
                 if ($id_remap_h{$type}) {
                     $type = $id_remap_h{$type};
@@ -303,7 +317,7 @@ sub parse_fh {
                     }
                 }
 		my ($syn, $parts, $extra_quals) =
-		  extract_qstr($val);
+		  extract_qstr($val2);
                 if (@$extra_quals) {
                     $scope = shift @$extra_quals;
                     $scope = lc($scope);
@@ -326,6 +340,31 @@ sub parse_fh {
 		$val =
 		  [[SYNONYM_TEXT,$syn],
 		   (map {dbxref($_)} @$parts)];
+	    }
+	    elsif ($tag eq 'holds_temporally_between' ||    # experimental support for obof1.3
+                   $tag eq 'holds_atemporally_between' ||
+                   $tag eq 'holds_on_class_level_between') {
+		my ($sub, $ob) = split(' ', $val2);
+                if ($id_remap_h{$sub}) {
+                    $sub = $id_remap_h{$sub};
+                }
+                if ($id_remap_h{$ob}) {
+                    $ob = $id_remap_h{$ob};
+                }
+		$val = [[subject=>$sub],[object=>$ob]];
+	    }
+	    elsif ($tag eq 'holds_over_chain') {    # experimental support for obof1.3
+		my @rels = split(/\s*\*\s*/, $val2);
+
+                @rels = map {                 
+                    if ($id_remap_h{$_}) { 
+                        $id_remap_h{$_}
+                    }
+                    else {
+                        $_;
+                    }
+                } @rels;
+		$val = [map {[relation=>$_]} @rels];
 	    }
 	    else {
 		$val = $val2;
@@ -393,11 +432,12 @@ sub parse_fh {
     return;
 }
 
+# each tag line can have trailing qualifiers in {}s at the end
 sub extract_quals {
     my $str = shift;
 
     my %q = ();
-    if ($str =~ /(.*)\s+(\{.*\})\s*$/) {
+    if ($str =~ /(.*)\s+(\{.*)\}\s*$/) {
         my $return_str = $1;
         my $extr = $2;
         if ($extr) {
@@ -407,6 +447,9 @@ sub extract_quals {
                     $q{$1} = $2;
                 }
                 elsif (/(\w+)=\'(.*)\'/) {
+                    $q{$1} = $2;
+                }
+                elsif (/(\w+)=(\S+)/) { # current 1.2 standard; non-quoted
                     $q{$1} = $2;
                 }
                 else {
@@ -495,8 +538,8 @@ sub dbxref {
         $acc = "http:$acc";
     }
     else {
-        $db=escape($db);
-        $acc=escape($acc);
+#        $db=escape($db);
+#        $acc=escape($acc);
     }
     #$db =~ s/\s+/_/g;  # HumanDO.obo has spaces in xref
     #$acc =~ s/\s+/_/g;
@@ -506,6 +549,104 @@ sub dbxref {
               [DBNAME,$db],
               defined $name ? [NAME,$name] : ()
              ]];
+}
+
+sub parse_term_expression {
+    my $self = shift;
+    my $expr = shift;
+    my ($te,$rest) = $self->parse_term_expression_with_rest($expr);
+    if ($rest) {
+        $self->parse_err("trailing: $rest");
+    }
+    return Data::Stag->nodify($te);
+}
+
+sub parse_term_expression_with_rest {
+    my $self = shift;
+    my $expr = shift;
+    if ($expr =~ /^\((.*)/) {
+        my $genus_expr = $1;
+        my ($genus,$diff_expr) = $self->parse_term_expression_with_rest($genus_expr);
+        my $next_c = substr($diff_expr,0,1,'');
+        if ($next_c eq ')') {
+            my ($diffs,$rest) = $self->parse_differentia_with_rest($diff_expr);
+            my $stag = [intersection=>[
+                                       [link=>[[to=>[$genus]]]],
+                                       @$diffs]];
+            return ($stag,$rest);
+            
+        }
+        else {
+            $self->parse_err("expected ) at end of genus. Got: $next_c followed by $diff_expr");
+        }
+    }
+    elsif ($expr =~ /^([\w\:]+)\^(.*)/) {
+        my $genus = $1;
+        my $diff_expr = $2;
+        my ($diffs,$rest) = $self->parse_differentia_with_rest($diff_expr);
+        my $stag = [intersection=>[
+                                   [link=>[[to=>$genus]]],
+                                   @$diffs]];
+        return ($stag,$rest);
+    }
+    elsif ($expr =~ /^([\w\:]+)(.*)/) {
+        return ($1,$2);
+    }
+    else {
+        $self->parse_err("could not parse: $expr");
+    }
+}
+
+sub parse_differentia {
+    my $self = shift;
+    my $expr = shift;
+    my ($diffs,$rest) = $self->parse_differentia_with_rest($expr);
+    if ($rest) {
+        $self->parse_err("trailing: $rest");
+    }
+    
+    Data::Stag->nodify($_) foreach @$diffs;
+    return $diffs;
+}
+
+sub parse_differentia_with_rest {
+    my $self = shift;
+    my $expr = shift;
+    if ($expr =~ /^(.+?)\((.*)/) {
+        my $rel = $1;
+        my $term_expr = $2;
+        my ($term,$rest) = $self->parse_term_expression_with_rest($term_expr);
+        my $diff = [link=>[[type=>$rel],
+                           [to=>(ref($term) ? [$term] : $term)]]];
+        if ($rest) {
+            my $next_c = substr($rest,0,1,'');
+            if ($next_c eq ')') {
+                $next_c = substr($rest,0,1);
+                if ($next_c eq '^' || $next_c eq ',') {
+                    my ($next_diffs,$next_rest) = $self->parse_differentia_with_rest(substr($rest,1));
+                    return ([$diff,@$next_diffs],$next_rest);
+                }
+                elsif ($next_c eq '') {
+                    return ([$diff],$rest);
+                }
+                elsif ($next_c eq ')') {
+                    return ([$diff],$rest);
+                }
+                else {
+                    $self->parse_err("expected ^ or ). Got: $next_c followed_by: $rest");
+                }
+            }
+            else {
+                $self->parse_err("exprected ). Got: $next_c followed by: $rest");
+            }
+        }
+        else {
+            $self->parse_err("expected ). Got: \"\"");
+        }
+    }
+    else {
+        $self->parse_err("expect relation(...). Got: $expr");
+    }
 }
 
 # lifted from CGI::Util

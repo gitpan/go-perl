@@ -4,7 +4,7 @@ use lib '.';
 BEGIN {
     eval { require Test; };
     use Test;    
-    plan tests => 3;
+    plan tests => 5;
 }
 
 # All tests must be run from the software directory;
@@ -25,7 +25,12 @@ ok(1);
 $parser->parse ("./t/data/llm.obo");
 
 my $t = $graph->get_term_by_name("larval locomotory behavior");
+printf "ns: %s\n", $t->namespace;
+ok ($t->namespace eq 'biological_process');
+
 my $ldef = $t->logical_definition;
+printf "ldef ns: %s\n", $ldef->namespace;
+ok ($ldef->namespace eq 'foo');
 foreach (@{$ldef->intersection_list}) {
     print "@$_\n";
 }

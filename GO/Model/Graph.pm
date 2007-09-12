@@ -1,4 +1,4 @@
-# $Id: Graph.pm,v 1.22 2006/10/19 18:38:28 cmungall Exp $
+# $Id: Graph.pm,v 1.24 2007/09/12 03:07:30 cmungall Exp $
 #
 # This GO module is maintained by Chris Mungall <cjm@fruitfly.org>
 #
@@ -113,6 +113,19 @@ future when such relationships are added to GO/OBOA
 
  graph object will calculate transitive closures for you - that is it
 will follow the path in the graph to the root or to all leafs
+
+=head2 ITERATORS
+
+Using the create_iterator and iterate methods, you can create
+"visitors" that will traverse the graph, performing actions along the
+way. Functional-style programming is encouraged, as the iterature()
+method allows for the passing of lexical closures:
+
+  $graph->iterate(sub {$term=shift->term;
+                       printf "%s %s\n", $term->acc,$term->name},
+                  {direction=>'up',
+                   acc=>"GO:0008045"})
+
 
 =head2 SEE ALSO
 
@@ -2486,6 +2499,25 @@ sub to_text_output {
                           $prefix,
                           $n->name,
                           $n->public_acc);
+            }
+            if ($opts->{show_counts}) {
+                $line.= " [gps: ".$term->n_deep_products."]";
+                if ($opts->{grouped_by_taxid}) {
+                    my $sh = $opts->{species_hash} || {};
+                    my $n_by_tax = $term->n_deep_products_grouped_by_taxid;
+                    my @taxids = sort {$n_by_tax->{$b} <=> $n_by_tax->{$a}} keys %$n_by_tax;
+                    # arbitrarily select first 10...
+                    my @staxids = splice(@taxids,0,10);
+                    $line .= " by_tax=";
+                    foreach (@staxids) {
+                        my $sn = $_;
+                        my $sp = $sh->{$_};
+                        if ($sp && $sp->binomial) {
+                            $sn = $sp->binomial;
+                        }
+                        $line .= " $sn:$n_by_tax->{$_}"
+                    }
+                }
             }
             $line .= "\n";
             if ($show_assocs && $self->is_focus_node($term)) {

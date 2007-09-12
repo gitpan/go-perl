@@ -24,14 +24,23 @@ while ($ARGV[0] =~ /^(\-.*)/) {
 die "You must specify an idspace; for example:\n$0 --idspace CL" unless $idspace;
 die "You must specify a differentium; for example:\n$0 -d \"part_of NCBITax:zebrafish\"" unless $diff;
 
+my %done = ();
+my $id;
 while (<>) {
     chomp;
+    $id = $1 if /^id: (\S+)/;
     print "$_\n";
     if (/^xref(\w*):\s*(.*)/) {
         my $xref = $2;
-        if ($xref =~ /(.*):/ &&  $1 eq $idspace) {
-            print "intersection_of: $xref\n";
-            print "intersection_of: $diff\n";
+        if ($done{$id}) {
+            print STDERR "ignoring additional xref: $xref for $id\n";
+        }
+        else {
+            $done{$id}=1;
+            if ($xref =~ /(.*):/ &&  $1 eq $idspace) {
+                print "intersection_of: $xref\n";
+                print "intersection_of: $diff\n";
+            }
         }
     }
 }

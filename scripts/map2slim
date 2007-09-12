@@ -93,7 +93,7 @@ my $ont;
 if ($cache && -f $cache) {
     print STDERR "Using cache: $cache\n" if $verbose;
     #$ont = YAML::LoadFile($cache);
-    $ont = retrieve $cache;
+    $ont = Storable::retrieve($cache);
 }
 else {
     if ($opt->{dbname}) {
@@ -477,12 +477,12 @@ intersect multiple terms in the slim ontology - which means that one
 annotation can map to multiple slim terms!
 
 (B<note> you need to view this online to see the image below - if you
-are not viewing this on the godatabase.org site, you can look at the
-file dev/go-perl/doc/map2slim.gif in an image viewer)
+are not viewing this on the http://www.geneontology.org site, you can look at the following URL:
+L<http://geneontology.cvs.sourceforge.net/*checkout*/geneontology/go-dev/go-perl/doc/map2slim.gif> )
 
 =begin html
 
-<img src="http://www.geneontology.org/images/map2slim.gif"/>
+<img src="http://geneontology.cvs.sourceforge.net/*checkout*/geneontology/go-dev/go-perl/doc/map2slim.gif"/>
 
 =end html
 

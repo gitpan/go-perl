@@ -157,6 +157,9 @@
       <xsl:comment>is_a relationship types between typedefs</xsl:comment>
       <xsl:apply-templates select="*/typedef/is_a"/>
 
+      <xsl:comment>cvterm metadata</xsl:comment>
+      <xsl:apply-templates select="*/term/property_value"/>
+
       <xsl:comment>instance-level relations</xsl:comment>
       <xsl:apply-templates select="*/instance/property_value"/>
 
@@ -343,6 +346,7 @@
     </dbxref>
   </xsl:template>
 
+  <!-- TODO: implied links -->
   <xsl:template match="is_a">
     <cvterm_relationship>
       <type_id>builtin__is_a</type_id>

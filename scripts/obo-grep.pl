@@ -5,6 +5,7 @@ my %tag_h=();
 my $regexp = '';
 my $noheader;
 my $negate;
+my $count;
 while ($ARGV[0] =~ /^\-.+/) {
     my $opt = shift @ARGV;
     if ($opt eq '-h' || $opt eq '--help') {
@@ -14,18 +15,21 @@ while ($ARGV[0] =~ /^\-.+/) {
     if ($opt eq '-r' || $opt eq '--regexp') {
         $regexp = shift @ARGV;
     }
+    if ($opt eq '-c' || $opt eq '--count') {
+        $count = 1;
+    }
     if ($opt eq '--noheader') {
         $noheader = 1;
     }
-    if ($opt eq '--neg') {
+    if ($opt eq '-v' || $opt eq '--neg') {
         $negate = 1;
     }
 }
 
-print_obo_header();
 
 $/ = "\n\n";
 
+my $n = 0;
 while (@ARGV) {
     my $f = pop @ARGV;
     if ($f eq '-') {
@@ -34,35 +38,33 @@ while (@ARGV) {
     else {
         open(F,$f) || die $f;
     }
+    my $hdr = 0;
     while(<F>) {
-        if ($negate) {
-            if ($_ !~ /$regexp/) {
-                print;
-            }
+        if (!$hdr && $_ !~ /^\[/) {
+            print unless $noheader || $count;
+            $hdr = 1;
         }
         else {
-            if (/$regexp/) {
-                print;
+            if ($negate) {
+                if ($_ !~ /$regexp/) {
+                    $n++;
+                    print unless $count;
+                }
+            }
+            else {
+                if (/$regexp/) {
+                    $n++;
+                    print unless $count;
+                }
             }
         }
     }
+}
+if ($count) {
+    print "$n\n";
 }
 
 exit 0;
-
-sub print_obo_header {
-    if ($noheader) {
-        return;
-    }
-    print <<EOM;
-format-version: 1.2
-date: 23:09:2005 14:37
-saved-by: obo-grep
-default-namespace: none
-
-EOM
-
-}
 
 sub scriptname {
     my @p = split(/\//,$0);
@@ -74,7 +76,7 @@ sub usage {
     my $sn = scriptname();
 
     <<EOM;
-$sn [--noheader] [--negate] [--r REGULAR-EXPRESSION] OBO-FILE
+$sn [--noheader] [--neg] [--r REGULAR-EXPRESSION] OBO-FILE
 
 filters out stanzas from obo files
 

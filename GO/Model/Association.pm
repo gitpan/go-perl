@@ -1,4 +1,4 @@
-# $Id: Association.pm,v 1.5 2005/06/29 18:40:19 sshu Exp $
+# $Id: Association.pm,v 1.7 2007/03/27 22:36:16 sjcarbon Exp $
 #
 # This GO module is maintained by Chris Mungall <cjm@fruitfly.org>
 #
@@ -47,7 +47,7 @@ use base qw(GO::Model::Root Exporter);
 
 
 sub _valid_params {
-    return qw(id gene_product evidence_list is_not role_group qualifier_list source_db_id assigned_by);
+    return qw(id gene_product evidence_list is_not role_group qualifier_list source_db_id assigned_by assocdate);
 }
 
 
@@ -269,6 +269,15 @@ sub gene_product {
 }
 
 
+=head2 assigned_by
+
+  Usage   -
+  Returns -
+  Args    -
+
+=cut
+#autoloaded
+
 =head2 is_not
 
   Usage   -
@@ -283,6 +292,31 @@ sub is_not {
     my $self = shift;
     $self->{is_not} = shift if @_;
     return $self->{is_not};
+}
+
+=head2 assocdate
+
+  Usage   -
+  Returns -
+  Args    -
+
+=cut
+#autoloaded
+
+=head2 assocdate
+
+  Usage   -
+  Returns -
+  Args    -
+
+gets/sets integer representing the date of the association (YYYYMMDD format)
+
+=cut
+
+sub assocdate {
+    my $self = shift;
+    $self->{assocdate} = shift if @_;
+    return $self->{assocdate};
 }
 
 =head2 role_group

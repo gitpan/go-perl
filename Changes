@@ -103,3 +103,33 @@ VERSION 0.06
 
 No code changes in this release; the 0.05 CPAN release erroneously
 contained out of date copies of the XSL files
+
+VERSION 0.07
+============
+
+2006-11-28      - [cjm] fixed obo export to properly escape {}s
+
+2006-12-06      - [cjm] fixed boolean tags in obo format export
+                        ncbi_taxonomy_parser - has_rank is now metadata property
+
+2006-12-12      - [cjm] handles unquoted trailing modifier correctly in obof1.2
+
+2006-12-12      - [cjm] added GO::Model::DB
+
+2007-03-02      - [cjm] Fixed GO::Parsers::go_xref_parser - now handles >1 xref per line
+
+2007-05-13      - [cjm] object model now handles consider and replaced_by tags
+                - [cjm] disjointness and union_of support in object model
+                - [cjm] fixed definition xref parsing with escape characters
+
+2007-07-05      - [cjm] parses secondary taxon IDs (multi-species terms)
+
+2007-07-10      - [cjm] GO::Parsers::obo_text_parser - handles term expresssions (obof1.3)
+2007-07-10      - [cjm] GO::Parsers::go_assoc_parser - handles new properties column(16)
+
+2007-08-02      - [cjm] object parser now catches species & assocdate
+
+2007-09-09      - [cjm] GO::Parsers::obo_text_parser - synonymtypedef now uses ID and NAME as sub-elements
+
+
+

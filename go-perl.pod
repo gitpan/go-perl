@@ -1,4 +1,4 @@
-# $Id: go-perl.pod,v 1.13 2005/10/24 01:44:04 cmungall Exp $
+# $Id: go-perl.pod,v 1.16 2007/02/05 20:14:08 cmungall Exp $
 #
 # see also - http://www.geneontology.org
 #          - http://www.godatabase.org/dev
@@ -66,9 +66,9 @@ Biological ontologies typically have graph-based structures
 (DAGs). go-perl provides a perl object model representing ontologies
 and associations to ontologies. Classes include:
 
-L<GO::Model::Term> -- a concept within an ontology
+L<GO::Model::Term> -- a node/term within an ontology
 
-L<GO::Model::Graph> -- collection of relationships between terms
+L<GO::Model::Graph> -- collection of terms and the relationships between them
 
 L<GO::Model::Relationship> -- a typed relationship between two terms
 
@@ -84,7 +84,7 @@ L<GO::Model::Seq> -- a biological sequence of residues for a gene product
 
 =begin html
 
-<img src="/dev/go-perl/doc/gomodel.png">
+<img src="http://geneontology.cvs.sourceforge.net/*checkout*/geneontology/go-dev/go-perl/doc/gomodel.png"/>
 
 =end html
 
@@ -290,7 +290,7 @@ http://www.godatabase.org/dev/sql/doc/godb-sql-doc.html
 
 =head1 AUTHORS
 
-(C) Chris Mungall 2000-2004
+(C) Chris Mungall 2000-2006
 
 This module is free software. You may distribute under the same terms
 as perl itself.
@@ -298,5 +298,5 @@ as perl itself.
 =cut
 
 package go-perl;
-$VERSION='0.06';
+$VERSION='0.07_pre';
 1;

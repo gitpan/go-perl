@@ -1,7 +1,7 @@
 #!/usr/local/bin/perl -w
 
 use lib '.';
-use constant NUMTESTS => 2;
+use constant NUMTESTS => 4;
 BEGIN {
     eval { require Test; };
     use Test;    
@@ -22,13 +22,31 @@ use GO::Parser;
 if (1) {
     my $f = './t/data/sample.ncbi_taxonomy';
     my $f2 = cvt($f,'ncbi_taxonomy','obo');
+
+    # some taxon terms contain {} - test that escaping of these works
+    open(F,$f2) || die;
+    my $matched;
+    while (<F>) {
+        # ID 21 has a fake {...} entry
+        if (/\\\{test\\\}/) {
+            $matched=1;
+            last;
+        }
+    }
+    ok($matched);
     
     my $parser = new GO::Parser;
     $parser->parse($f2);
     my $obo = $parser->handler->stag;
     ok($obo->get('header/synonymtypedef'));
     ok($obo->get('term/synonym/@/synonym_type'));
+    my @terms = $obo->get_term;
+    my ($t) = grep {$_->sget_id eq 'NCBITaxon:21'} @terms;
+    # some taxon terms contain {} - test that escaping of these works
+    print $t->get_name,"\n";
+    ok($t->get_name eq 'Phenylobacterium immobile {test}');
 }
+
 exit 0;
 
 sub cvt {

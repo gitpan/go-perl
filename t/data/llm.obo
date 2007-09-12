@@ -52,8 +52,8 @@ name: larval locomotory behavior
 namespace: biological_process
 is_a: GO:0007626     ! locomotory behavior
 is_a: GO:0030537     ! larval behavior
-intersection_of: GO:0007626
-intersection_of: during FBdv:00005336
+intersection_of: GO:0007626 {namespace=foo}
+intersection_of: during FBdv:00005336 {namespace=foo}
 
 [Term]
 id: GO:0030537
@@ -65,8 +65,8 @@ synonym: "larval behavior (sensu Drosophila)" [] narrow
 synonym: "larval behavior (sensu Insecta)" [] narrow
 is_a: GO:0007610     ! behavior
 comment: See also the biological process term 'behavior ; GO:0007610'.
-intersection_of: GO:0007610
-intersection_of: during FBdv:00005336
+intersection_of: GO:0007610             {namespace=foo}
+intersection_of: during FBdv:00005336   {namespace=foo}
 
 [Typedef]
 id: OBO_REL:part_of

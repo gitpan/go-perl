@@ -1,4 +1,4 @@
-# $Id: go_xref_parser.pm,v 1.4 2005/01/31 19:30:35 cmungall Exp $
+# $Id: go_xref_parser.pm,v 1.7 2007/03/03 02:06:21 cmungall Exp $
 #
 #
 # see also - http://www.geneontology.org
@@ -60,7 +60,7 @@ sub parse_fh {
     my $file = $self->file;
 
     my $lnum = 0;
-    $self->start_event(DBXREFS);
+    $self->start_event(OBO);
     while (<$fh>) {
         chomp;
         $lnum++;
@@ -68,28 +68,39 @@ sub parse_fh {
         next if /^$/;
         $self->line($_);
         $self->line_no($lnum);
-        if (/(\w+):?(.*)\s+\>\s+(.+)\s+;\s+(.+)/) {
-            my ($db, $dbacc, $goname, $goacc) = ($1, $2, $3, $4);
-            my @goaccs = split(/\, /, $goacc);
-            foreach $goacc (@goaccs) {
-                if ($self->acc_not_found($goacc)) {
-                    $self->parse_err("No such ID: $goacc");
-                    next;
+        my ($ext, @goids) = split(' > ',$_);
+        if ($ext =~ /^(\w+):?(\S+)(.*)/) {
+            my ($db,$dbacc,$name) = ($1,$2,$3);
+            $name =~ s/^\s+// if $name;
+            $dbacc =~ s/\s/\%20/g;
+            foreach my $goid (@goids) {
+                if ($goid =~ /(.*)\s+\;\s+(.*)/) {
+                    my $goacc = $2;
+                    if ($self->acc_not_found($goacc)) {
+                        $self->parse_err("No such ID: $goacc");
+                        next;
+                    }
+                    $self->start_event(TERM);
+                    $self->event(ID, $goacc);
+                    $self->start_event(XREF_ANALOG);
+                    $self->event(ACC, $dbacc);
+                    $self->event(DBNAME, $db);
+                    if ($name) {
+                        $self->event(NAME, $name)
+                    }
+                    $self->end_event(XREF_ANALOG);
+                    $self->end_event(TERM);
                 }
-                $self->start_event(TERM);
-                $self->event(ID, $goacc);
-                $self->start_event(XREF_ANALOG);
-                $self->event(ACC, $dbacc);
-                $self->event(DBNAME, $db);
-                $self->end_event(XREF_ANALOG);
-                $self->end_event(TERM);
+                else {
+                    $self->parse_err("would not extract GO ID from: $goid");
+                }
             }
         }
         else {
-            $self->parse_err("cannot parse this line: $_");
+            $self->parse_err("bad external ID: $ext in line: $_");
         }
     }
-    $self->end_event(DBXREFS);
+    $self->end_event(OBO);
 }
 
 1;

@@ -1,4 +1,4 @@
-# $Id: ObjFactory.pm,v 1.5 2006/04/05 22:47:56 cmungall Exp $
+# $Id: ObjFactory.pm,v 1.6 2007/01/24 01:16:19 cmungall Exp $
 #
 # This GO module is maintained by Chris Mungall <cjm@fruitfly.org>
 #
@@ -54,6 +54,7 @@ use GO::Model::GeneProduct;
 use GO::Model::CrossProduct;
 use GO::Model::LogicalDefinition;
 use GO::Model::Graph;
+use GO::Model::DB;
 use GO::Model::Ontology;
 use GO::Model::Property;
 use GO::Model::Restriction;
@@ -143,6 +144,21 @@ sub create_seq_obj {
     my $seq = GO::Model::Seq->new(@_);
     $seq->apph( $self->apph );
     return $seq;
+}
+
+=head2 create_db_obj
+
+  Usage   - $db = $apph->create_db_obj;
+  Returns - L<GO::Model::DB>
+  Args    -
+
+=cut
+
+sub create_db_obj {
+    my $self = shift;
+    my $db = GO::Model::DB->new(@_);
+    $db->apph( $self->apph );
+    return $db;
 }
 
 =head2 create_association_obj

@@ -1,4 +1,4 @@
-# $Id: Term.pm,v 1.17 2006/09/11 21:59:52 cmungall Exp $
+# $Id: Term.pm,v 1.23 2007/09/12 03:07:30 cmungall Exp $
 #
 # This GO module is maintained by Chris Mungall <cjm@fruitfly.org>
 #
@@ -90,10 +90,19 @@ use vars qw(@ISA);
 
 use base qw(GO::Model::Root Exporter);
 
-sub _valid_params { return qw(id type term_type name description
+our %code_to_namespace =
+  ('F'=>'molecular_function',
+   'P'=>'biological_process',
+   'C'=>'cellular_component');
+
+sub _valid_params { return qw(id name description term_type
 is_obsolete is_relationship_type public_acc acc definition
 synonym_list association_list selected_association_list
 association_hash n_associations dbxref_list property_list subset_list
+equivalent_to_union_of_term_list
+disjoint_from_term_list
+consider_list
+replaced_by_list
 stag is_anonymous is_cyclic is_transitive is_symmetric is_anti_symmetric is_reflexive
 inverse_of transitive_over domain range logical_definition); }
 
@@ -147,31 +156,6 @@ sub description {
     $self->name(@_);
 }
 
-=head2 namespace
-
-  Alias   - type
-  Alias   - term_type
-  Alias   - category
-  Alias   - ontology
-  Usage   - print $term->type();     # getting the type
-  Usage   - $term->type("function"); # setting the type
-  Returns - string representing type
-  Args    - string represnting type [optional]
-
-=cut
-
-sub type {
-    my $self = shift;
-    my $type = $self->{term_type};
-    $self->{term_type} = shift if @_;
-    return $self->{term_type};
-}
-
-# synonyms
-sub term_type { shift->type(@_) }
-sub category { shift->type(@_) }
-sub ontology { shift->type(@_) }
-sub namespace { shift->type(@_) }
 
 =head2 subset_list
 
@@ -472,6 +456,76 @@ sub add_alt_id {
     $self->add_synonym_by_type('alt_id',$_) foreach @_;
 }
 *add_secondaryid = \&add_alt_id;
+
+
+=head2 namespace (INHERITED)
+
+  Usage   - print $term->namespace();     # getting the type
+  Usage   - $term->namespace("molecular_function"); # setting the type
+  Alias   - type
+  Alias   - term_type
+  Alias   - category
+  Alias   - ontology
+  Returns - string representing type
+  Args    - string represnting type [optional]
+
+The OBO namespace for the L<GO::Model::Term> or
+L<GO::Model::Relationship>
+
+This method is inherited from the superclass
+
+=cut
+
+# DEFINED IN SUPERCLASS
+# documentation repeated here to make things easier to find
+
+=head2 set_namespace_by_code
+
+  Usage   - $term->set_namespace_by_code("P");
+  Returns - 
+  Args    - String: M, P or C
+
+Currently the mapping is hardcoded
+
+  ('F'=>'molecular_function',
+   'P'=>'biological_process',
+   'C'=>'cellular_component');
+
+=cut
+
+sub set_namespace_by_code {
+    my $self = shift;
+    my $code = shift;
+    my $ns = $code_to_namespace{$code};
+    if (!$ns) {
+        $self->throw("Unknown code: $code");
+    }
+    $self->namespace($ns);
+    return $code;
+}
+
+=head2 get_code_from_namespace
+
+  Usage   - $code = $term->get_code_from_namespace;
+  Returns - String: M, P or F
+  Args    - String (if omitted will use current namespace)
+
+Returns the code for the current namespace (or any given namespace if supplied)
+
+=cut
+
+sub get_code_from_namespace {
+    my $self = shift;
+    my $ns = shift || $self->namespace || ''; 
+    my %m = reverse %code_to_namespace; # assumes 1-1 bijective mapping
+    my $code = $m{$ns};
+#    if (!$code) {
+#        $self->throw("Unknown namespace: $ns");
+#    }
+    return $code;
+}
+
+
 
 
 # DEPCRECATED
@@ -904,6 +958,20 @@ sub n_deep_products {
     else {
     }
     return $self->{n_deep_products};
+}
+
+# EXPERIMENTAL
+sub n_deep_products_grouped_by_taxid {
+    my $self = shift;
+    $self->{n_deep_products_grouped_by_taxid} = shift if @_;
+    if (!defined($self->{n_deep_products_grouped_by_taxid}) ||
+        $self->{n_deep_products_grouped_by_taxid} eq "recount") {
+        $self->{n_deep_products_grouped_by_taxid} = 
+          $self->apph->get_deep_product_count({term=>$self,group_by=>'taxid'});
+    }
+    else {
+    }
+    return $self->{n_deep_products_grouped_by_taxid};
 }
 
 

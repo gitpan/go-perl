@@ -32,6 +32,12 @@ perl -MCPAN -e shell
 install GO::Parser
 ----------
 
+The following may also work:
+
+----------
+cpan GO::Parser
+----------
+
 If this is the first time using the CPAN installer, you will be asked
 a barrage of questions. You are best to answer with the defaults - you
 can always change this later.
@@ -42,6 +48,12 @@ should either get some help setting up CPAN for use with your system,
 OR you should follow an alternate protocol below. (You may wish to
 modify the value of PREFIX to ~ in the CPAN setup, as detailed in
 protocol III)
+
+If you are on OS X you may need to do this:
+
+----------
+sudo cpan GO::Parser
+----------
 
 Providing you do have write-access to these directories, the above
 commands should hopefully go smoothly. When installing go-perl, you

@@ -1,4 +1,4 @@
-# $Id: ncbi_taxonomy_parser.pm,v 1.6 2006/10/27 18:24:13 cmungall Exp $
+# $Id: ncbi_taxonomy_parser.pm,v 1.9 2006/12/07 23:16:53 cmungall Exp $
 #
 #
 # see also - http://www.geneontology.org
@@ -87,6 +87,7 @@ sub parse_fh {
                   [id=>'has_rank'],
                   [name=>"has_rank"],
                   [def=>[[defstr=>"A metadata relation between a class and its taxonomic rank (eg species, family)"]]],
+                  [is_metadata_tag=>1],
                   [comment=>"This is an abstract class for use with the NCBI taxonomy to name the depth of the node within the tree. The link between the node term and the rank is only visible if you are using an obo 1.3 aware browser/editor; otherwise this can be ignored"]
                  ]);
 
@@ -160,11 +161,20 @@ sub emit_term {
         next unless $syns;
         my $scope = $synonymtypes{$st}->[0];
         foreach my $s (@$syns) {
-
+            my @xrefs = ();
+            if ($s =~ /\"(.+)\"\s*(.+)/ ||
+                $s =~ /\'(.+)\'\s*(.+)/) {
+                my $xref = $2;
+                $s = $1;
+                $xref =~ s/\s+/_/g;
+                $xref =~ tr/\(\)//d;
+                push(@xrefs, [dbxref=>[[acc=>$xref],[dbname=>"NCBITaxonRef"]]]);
+            }
             $self->event(SYNONYM,[
                                   ['@'=>[['scope',$scope],
                                          [SYNONYM_TYPE,syn($st)]]],
-                                  [SYNONYM_TEXT,$s]]);
+                                  [SYNONYM_TEXT,$s],
+                                  @xrefs]);
         }
     }
     my $rank = pop @{$h->{rank}};
@@ -180,14 +190,14 @@ sub emit_term {
                               ]);
         }
 
-# this is the correct way to handle this - as annotation properties
-#    $self->event(PROPERTY_VALUE,[[TYPE,'rank'],
-#                                 [TO,_rank_id($rank)]])
-#      if $rank;
-
+        #this is the correct way to handle this - as annotation properties
+        $self->event(PROPERTY_VALUE,[[TYPE,'has_rank'],
+                                     [TO,_rank_id($rank)]])
+          if $rank;
+        
 # do it this way for now until oboedit is fixed:
-        $self->event(RELATIONSHIP,[[TYPE,'has_rank'],
-                                   [TO,_rank_id($rank)]])
+#        $self->event(RELATIONSHIP,[[TYPE,'has_rank'],
+#                                   [TO,_rank_id($rank)]])
     }
 
     my $gc = pop @{$h->{'gc id'}};

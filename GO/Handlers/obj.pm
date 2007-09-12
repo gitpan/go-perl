@@ -1,4 +1,4 @@
-# $Id: obj.pm,v 1.18 2006/08/05 20:26:12 cmungall Exp $
+# $Id: obj.pm,v 1.23 2007/08/03 03:32:48 cmungall Exp $
 #
 # This GO module is maintained by Chris Mungall <cjm@fruitfly.org>
 #
@@ -175,19 +175,16 @@ sub stanza {
         elsif ($k eq ALT_ID) {
 	    $term->add_alt_id($v);
         }
-        elsif ($k eq 'property') {
-            # experimental tag!!
-            warn('experimental code!');
-            my %ph = stag_pairs($sn);
-            my $prop =
-              $self->apph->create_property_obj({name=>$ph{name},
-                                                range_acc=>$ph{range},
-                                                namerule=>$ph{namerule},
-                                                defrule=>$ph{defrule},
-                                               });
-            $term->add_property($prop);
+        elsif ($k eq CONSIDER) {
+	    $term->add_consider($v);
         }
-        elsif ($k eq XREF_ANALOG) {
+        elsif ($k eq REPLACED_BY) {
+	    $term->add_replaced_by($v);
+        }
+        elsif ($k eq ALT_ID) {
+	    $term->add_alt_id($v);
+        }
+        elsif ($k eq XREF_ANALOG || $k eq XREF) {
             my $xref =
 	      $self->apph->create_xref_obj(stag_pairs($sn));
             $term->add_dbxref($xref);
@@ -197,28 +194,11 @@ sub stanza {
 	      $self->apph->create_xref_obj(stag_pairs($sn));
             $term->add_dbxref($xref);
         }
-        elsif ($k eq 'cross_product') {
-            warn('experimental code!');
-            my %ph = stag_pairs($sn);
-            my $xp =
-              $self->g->add_cross_product($term->acc,
-                                          $ph{parent_acc},
-                                          []);
-            foreach (stag_get($sn, 'restriction')) {
-                $xp->add_restriction(stag_get($_, 'property_name'),
-                                     stag_get($_, 'value'))
-            }
-
-        }
         elsif ($k eq ID) {
             $term->acc($v);
         }
-        elsif ($k eq 'ontology') {
-            warn('deprecated');
-            $term->type($v);
-        }
         elsif ($k eq NAMESPACE) {
-            $term->type($v);
+            $term->namespace($v);
         }
         elsif ($k eq NAME) {
             $term->name($v);
@@ -233,6 +213,12 @@ sub stanza {
             $term->is_root($v);
         }
         elsif ($k eq BUILTIN) {
+            # ignore
+        }
+        elsif ($k eq PROPERTY_VALUE) {
+            # ignore
+        }
+        elsif ($k eq IS_METADATA_TAG) {
             # ignore
         }
         elsif ($k eq IS_OBSOLETE) {
@@ -264,6 +250,7 @@ sub stanza {
             my $rel = stag_get($sn, TYPE);
             my $obj = stag_get($sn, TO);
             my $isect = [$rel,$obj];
+            my $ns = stag_find($sn, 'namespace');
             if (!$rel) {
                 shift @$isect;
             }
@@ -272,7 +259,14 @@ sub stanza {
                 $ldef = $self->apph->create_logical_definition_obj();
                 $term->logical_definition($ldef);
             }
+            $ldef->namespace($ns) if ($ns);
             $ldef->add_intersection($isect);
+        }
+        elsif ($k eq UNION_OF) {
+            $term->add_equivalent_to_union_of_term($v);
+        }
+        elsif ($k eq DISJOINT_FROM) {
+            $term->add_disjoint_from_term($v);
         }
         else {
             warn("add method for $k");
@@ -335,12 +329,22 @@ sub e_prod {
     $prod->xref->xref_key(stag_sget($tree, PRODACC));
     $prod->synonym_list(\@syns);
     my @assocs = stag_get($tree, ASSOC);
+    my $taxid = stag_get($tree, PRODTAXA);
+    my $species;
+    if ($taxid) {
+        $species =       
+          $self->apph->create_species_obj({ncbi_taxa_id=>$taxid});
+        $prod->species($species);
+
+    }
     foreach my $assoc (@assocs) {
         my $acc = stag_get($assoc, TERMACC);
         if (!$acc) {
             $self->message("no accession given");
             next;
         }
+
+        
         my $t = $g->get_term($acc);
         if (!$t) {
             if (!$self->strictorder) {
@@ -352,11 +356,22 @@ sub e_prod {
                 next;
             }
         }
+        my $aspect = stag_get($assoc, ASPECT);
+        if ($aspect) {
+            $t->set_namespace_by_code($aspect);
+        }
+
         my @evs = stag_get($assoc, EVIDENCE);
         my $ao =
           $self->apph->create_association_obj({gene_product=>$prod,
                                                is_not=>stag_sget($assoc, IS_NOT),
                                               });
+        my $date = stag_get($assoc,ASSOCDATE);
+        $ao->assocdate($date) if $date;
+
+        my $assigned_by = stag_get($assoc,SOURCE_DB);
+        $ao->assigned_by($assigned_by) if $assigned_by;
+
         foreach my $ev (@evs) {
             my $eo =
               $self->apph->create_evidence_obj({

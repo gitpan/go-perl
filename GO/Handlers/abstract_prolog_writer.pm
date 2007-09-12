@@ -19,8 +19,22 @@ sub prologquote {
     my $s = shift;
     my $force = shift;
     if (ref($s)) {
-        sprintf("[%s]",
-                join(',',map{prologquote($_)} @$s));
+        if (ref($s) ne 'HASH') {
+            sprintf("[%s]",
+                    join(',',map{prologquote($_)} @$s));
+        }
+        else {
+            my @keys = keys %$s;
+            if (@keys == 1) {
+                my $functor = $keys[0];
+                my $args = $s->{$functor};
+                sprintf("$functor(%s)",
+                        join(', ', map {prologquote($_)} @$args));
+            }
+            else {
+                warn "@keys != 1 - ignoring";
+            }
+        }
     }
     else {
         $s = '' unless defined $s;

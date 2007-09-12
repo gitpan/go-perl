@@ -1,4 +1,4 @@
-# $Id: Root.pm,v 1.4 2005/05/23 22:10:00 cmungall Exp $
+# $Id: Root.pm,v 1.6 2007/08/07 21:43:37 cmungall Exp $
 #
 # This GO module is maintained by Chris Mungall <cjm@fruitfly.org>
 #
@@ -123,11 +123,10 @@ sub _initialize
     my $self = shift;
     $self->init if $self->can("init");
     my @valid_params = $self->_valid_params;
-    my ($paramh) = @_;
+    my ($paramh) = @_; # first arg
+
+    # arguments passed as hash?
     if (ref($paramh)) {
-#        foreach my $m (keys %$paramh) {
-#            $self->$m($paramh->{$m}) if $self->can($m);
-#        }
         map {
             if (defined($paramh->{$_})) {
                 $self->$_($paramh->{$_});
@@ -135,6 +134,7 @@ sub _initialize
         } @valid_params;
     }
     else {
+        # arguments passed as array
         for (my $i=0; $i<@_; $i++) {
             my $m = $valid_params[$i];
             $self->$m($_[$i]);
@@ -159,6 +159,32 @@ sub id {
 }
 
 
+=head2 namespace
+
+  Usage   - print $term->namespace();     # getting the type
+  Usage   - $term->namespace("molecular_function"); # setting the type
+  Alias   - type
+  Alias   - term_type
+  Alias   - category
+  Alias   - ontology
+  Returns - string representing type
+  Args    - string represnting type [optional]
+
+The OBO namespace for the L<GO::Model::Term> or
+L<GO::Model::Relationship>
+
+=cut
+
+sub namespace {
+    my $self = shift;
+    $self->{namespace} = shift if @_;
+    return $self->{namespace};
+}
+# synonyms
+sub term_type { shift->namespace(@_) }
+sub category { shift->namespace(@_) }
+sub ontology { shift->namespace(@_) }
+sub type { shift->namespace(@_) }
 
 
 

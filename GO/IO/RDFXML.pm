@@ -1,4 +1,4 @@
-# $Id: RDFXML.pm,v 1.6 2006/08/05 20:26:12 cmungall Exp $
+# $Id: RDFXML.pm,v 1.9 2007/07/11 05:37:59 cmungall Exp $
 #
 # This GO module is maintained by Brad Marshall <bradmars@yahoo.com>
 #
@@ -226,7 +226,7 @@ sub draw_term {
 	$self->{writer}->startTag('go:term', 
 				  'focus'=>'yes', 
 				  'rdf:about'=>'http://www.geneontology.org/go#'.$term->public_acc,
-				  'n_associations'=>$term->n_deep_products
+#				  'n_associations'=>$term->n_deep_products
 				 );
       } else {
 	$self->{writer}->startTag('go:term', 
@@ -301,7 +301,8 @@ sub draw_term {
     } else {
       if (defined ($term->selected_association_list)) {
 	foreach my $selected_ass (sort by_gene_product_symbol @{$term->selected_association_list}) {
-	  $self->__draw_association($selected_ass, 1);
+            next if $selected_ass->is_not(); # skip negative associations
+            $self->__draw_association($selected_ass, 1);
 	}
       }
     }

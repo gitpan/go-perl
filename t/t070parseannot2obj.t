@@ -43,12 +43,18 @@ while(my $node = $it->next_node_instance){
     #use Data::Dumper;
     #print Dumper $graph;
     printf "TERM: %s %s\n", $term->acc, $term->name;
+    die $term->acc unless $term->namespace || $term->is_relationship_type;
+    my $aspect = $term->get_code_from_namespace;
+    die $term->acc unless ($term->is_relationship_type || $term->namespace =~ /Gene/ || $aspect eq 'F' || $aspect eq 'C' || $aspect eq 'P');
     my $assocs = $term->association_list;
 
     foreach my $assoc (@$assocs) {
         my $prod = 
           $assoc->gene_product;
         printf " PROD: %s\n", $prod->symbol;
+        die unless $assoc->assigned_by eq 'FB';
+        die unless $assoc->assocdate eq '20040228';
+        die unless $prod->species->ncbi_taxa_id eq '7227';
     }
     #this causes an error
     my $deep_assocs = 

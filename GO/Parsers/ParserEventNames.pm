@@ -31,6 +31,7 @@ use constant IS_TRANSITIVE => 'is_transitive';
 use constant IS_SYMMETRIC  => 'is_symmetric';
 use constant IS_ANTI_SYMMETRIC  => 'is_anti_symmetric';
 use constant IS_REFLEXIVE  => 'is_reflexive';
+use constant IS_METADATA_TAG  => 'is_metadata_tag';
 use constant DISJOINT_FROM => 'disjoint_from';
 use constant INVERSE_OF => 'inverse_of';
 use constant TRANSITIVE_OVER => 'transitive_over';
@@ -64,7 +65,10 @@ use constant DBXREF => 'dbxref';
 use constant TERM_DBXREF => 'term_dbxref';
 use constant SYNONYM_TEXT => 'synonym_text';
 use constant SYNONYM_TYPE => 'synonym_type';
+use constant CONSIDER => 'consider';
+use constant REPLACED_BY => 'replaced_by';
 
+use constant INSTANCE => 'instance';
 use constant PROPERTY_VALUE => 'property_value';
 use constant VALUE => 'value';
 use constant DATATYPE => 'datatype';
@@ -78,12 +82,14 @@ use constant PRODSYMBOL => 'prodsymbol';
 use constant PRODACC => 'prodacc';
 use constant PRODTAXA => 'prodtaxa';
 use constant PRODTYPE => 'prodtype';
-use constant SECONDARY_PRODTAXA => 'secondary_prodtaxa';
+use constant SECONDARY_PRODTAXA => 'secondary_prodtaxa'; # DEPRECATED
 use constant PRODSYN => 'prodsyn';
 
 use constant ASSOCS => 'assocs';
 use constant ASSOC => 'assoc';
 use constant QUALIFIER => 'qualifier';
+use constant SPECIES_QUALIFIER => 'species_qualifier';
+use constant PROPERTIES => 'properties';
 use constant ASPECT => 'aspect';
 use constant SOURCE_DB => 'source_db';
 use constant TERMACC => 'termacc';
@@ -107,6 +113,7 @@ use constant DBXREFS => 'dbxrefs';
              IS_SYMMETRIC
              IS_ANTI_SYMMETRIC
              IS_REFLEXIVE
+             IS_METADATA_TAG
              DISJOINT_FROM
              INVERSE_OF
              TRANSITIVE_OVER
@@ -134,6 +141,8 @@ use constant DBXREFS => 'dbxrefs';
                SYNONYM_TYPE 
                SYNONYM_TEXT 
              ALT_ID 
+             CONSIDER
+             REPLACED_BY
              COMMENT 
              XREF
              XREF_ANALOG 
@@ -160,6 +169,8 @@ use constant DBXREFS => 'dbxrefs';
 
                  ASSOC 
                    QUALIFIER
+                   SPECIES_QUALIFIER
+                   PROPERTIES
                    ASPECT 
                    SOURCE_DB 
                    TERMACC 

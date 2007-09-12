@@ -1,4 +1,4 @@
-# $Id: go_assoc_parser.pm,v 1.10 2006/10/19 18:38:28 cmungall Exp $
+# $Id: go_assoc_parser.pm,v 1.16 2007/07/11 05:38:00 cmungall Exp $
 #
 #
 # see also - http://www.geneontology.org
@@ -59,6 +59,7 @@ use Exporter;
 use base qw(GO::Parsers::base_parser Exporter);
 #use Text::Balanced qw(extract_bracketed);
 use GO::Parsers::ParserEventNames;
+use GO::Parser;
 
 use Carp;
 use FileHandle;
@@ -91,6 +92,8 @@ sub parse_fh {
     my $assoc;
     my $line_no = 0;
 
+    my $obo_parser; # an OBO parser may be required for parsing the PROPERTIES column
+
     my @COLS = (0..15);
     my ($PRODDB,
         $PRODACC,
@@ -107,7 +110,7 @@ sub parse_fh {
         $PRODTAXA,
         $ASSOCDATE,
 	$SOURCE_DB,
-        $TERM_REFINEMENT,   # experimental! 
+        $PROPERTIES,   # experimental! 
        ) = @COLS;
 
     my @mandatory_cols = ($PRODDB, $PRODACC, $TERMACC, $EVCODE);
@@ -134,6 +137,7 @@ sub parse_fh {
     #    <assocs>
  
     $self->start_event(ASSOCS);
+    $self->fire_source_event($file);
 
     my @last = map {''} @COLS;
 
@@ -226,7 +230,7 @@ sub parse_fh {
         $prodtaxa,
         $assocdate,
 	$source_db,
-        $term_refinement) = @vals;
+        $properties) = @vals;
 
 
 #	if (!grep {$aspect eq $_} qw(P C F)) {
@@ -254,24 +258,29 @@ sub parse_fh {
 	if (%evno && $evno{$evcode}) {
 	    next;
 	}
-	$prodtaxa =~ s/taxonid://gi;
-	$prodtaxa =~ s/taxon://gi;
-
-	if (!$prodtaxa) {
-	    if (!$taxa_warning) {
-		$taxa_warning = 1;
-		$self->parse_err("No NCBI TAXON specified; ignoring");
-	    }
-	}
-	else {
-	    if ($prodtaxa !~ /\d+/) {
-		if (!$taxa_warning) {
-		    $taxa_warning = 1;
-		    $self->parse_err("No NCBI TAXON wrong fmt: $prodtaxa");
-		    $prodtaxa = "";
-		}
-	    }
-	}
+        my @prodtaxa_ids = split(/\|/,$prodtaxa);
+        @prodtaxa_ids =
+          map {
+              s/taxonid://gi;
+              s/taxon://gi;
+              if ($_ !~ /\d+/) {
+                  if (!$taxa_warning) {
+                      $taxa_warning = 1;
+                      $self->parse_err("No NCBI TAXON wrong fmt: $_");
+                      $_ = "";
+                  }
+              }
+              $_;
+          } @prodtaxa_ids;
+        @prodtaxa_ids = grep {$_} @prodtaxa_ids;
+        my $main_taxon_id = shift @prodtaxa_ids;
+        if (!$main_taxon_id) {
+            if (!$taxa_warning) {
+                $taxa_warning = 1;
+                $self->parse_err("No NCBI TAXON specified; ignoring");
+            }
+        }
+        
 
         # check for new element; shift a level
 	my $new_dbset = $proddb ne $last[$PRODDB];
@@ -315,16 +324,8 @@ sub parse_fh {
 	    $self->event(PRODSYMBOL, $prodsymbol);
 	    $self->event(PRODNAME, $prodname) if $prodname;
 	    $self->event(PRODTYPE, $prodtype) if $prodtype;
-            if ($prodtaxa) {
-                if ($prodtaxa =~ /\|/) {
-                    my @other = ();
-                    ($prodtaxa, @other) = split(/\s*\|\s*/, $prodtaxa);
-                    if (@other > 1 ) {
-                        $self->parse_err("max cardinality for PRODTAXA is 2. File says: $prodtaxa @other");
-                    }
-                    $self->event(SECONDARY_PRODTAXA, $other[0]);
-                }
-                $self->event(PRODTAXA, $prodtaxa);
+            if ($main_taxon_id) {
+                $self->event(PRODTAXA, $main_taxon_id);
             }
 	    my $syn = $prodsyn;
 	    if ($syn) {
@@ -362,26 +363,31 @@ sub parse_fh {
 	    my $is_not = grep {/^not$/i} @quals;
 	    $self->event(IS_NOT, $is_not || '0');
 	    $self->event(QUALIFIER, $_) foreach @quals;
+            $self->event(SPECIES_QUALIFIER, $_) foreach @prodtaxa_ids; # all REMAINING (after "|') tax ids are qualifiers
 	    $self->event(ASPECT, $aspect);
-            if ($term_refinement) {
-                #$self->parse_term_refinement($term_refinement);
+            if ($properties) {
+                my @properties_list = split(/\|/,$properties);
+                if (!$obo_parser) {
+                    $obo_parser = GO::Parser->new({format=>'obo_text'});
+                }
+                foreach my $p (@properties_list) {
+                    my $diffs = $obo_parser->parse_differentia($p);
+                    $self->event(PROPERTIES, $diffs);
+                }
             }
 	}
 	$self->start_event(EVIDENCE);
 	$self->event(EVCODE, $evcode);
 	if ($with) {
-	    my @seq_accs = split(/\s*[\|\;]\s*/, $with);
+            # TODO: discriminate between pipes and commas
+            # (semicolon is there for legacy reasons - check if this can be removed)
+	    my @with_accs = split(/\s*[\|\;\,]\s*/, $with);
 	    $self->event(WITH, $_)
-	      foreach @seq_accs;
-	    if (@seq_accs > 1) {
-		if ($evcode ne 'IGI' &&
-		    $evcode ne 'IPI' &&
-		    $evcode ne 'ISS' &&
-		    $evcode ne 'IEA'
-		   ) {
-		    $self->parse_err("cardinality of WITH > 1 [@seq_accs] and evcode $evcode is NOT RECOMMENDED - see GO docs");
-		}
-	    }
+	      foreach (grep (/:/, @with_accs));  
+	    # we have found errors where the : was left out, this just skips
+
+	    # no longer checks for cardinality errors
+
 	}
 	map {
 	    $self->event(REF, $_)
@@ -405,7 +411,7 @@ sub parse_fh {
            $prodtaxa,
            $assocdate,
            $source_db,
-           $term_refinement,
+           $properties,
           );
     }
     $fh->close;
@@ -413,18 +419,6 @@ sub parse_fh {
     $self->pop_stack_to_depth(0);
 }
 
-#sub parse_term_refinement {
-#    my $self = shift;
-#    my $slotstr = shift;
-#    $slotstr =~ s/\s+//;
-
-#    my $idstr, $relation;
-
-#    while (($idstr, $slotstr, $relation) = extract_bracketed($slotstr, '()')) {
-#        $self->parse_term_refinement($idstr);
-        
-#    }
-#}
 
 1;
 

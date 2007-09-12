@@ -19,19 +19,27 @@
   <xsl:output indent="yes" method="xml"/>
 
   <xsl:key name="terms" match="term" use="id"/>
+  <xsl:key name="k-synonymtypedef" match="synonymtypedef" use="id"/>
   <xsl:key name="obs-terms-by-name" match="term[is_obsolete]" use="name"/>
 
   <xsl:template match="/">
     <godb_prestore>
       <dbstag_metadata>
         <map>type/term_synonym.synonym_type_id=term.id</map>
+        <map>category/term_synonym.synonym_category_id=term.id</map>
+        <map>property_key/term_property.property_key_id=term.id</map>
         <map>term1/term2term.term1_id=term.id</map>
         <map>term2/term2term.term2_id=term.id</map>
         <map>type/term2term.relationship_type_id=term.id</map>
+        <map>term1/term2term_metadata.term1_id=term.id</map>
+        <map>term2/term2term_metadata.term2_id=term.id</map>
+        <map>type/term2term_metadata.relationship_type_id=term.id</map>
+        <map>type/association_property.relationship_type_id=term.id</map>
         <map>type/gene_product.type_id=term.id</map>
         <map>source_db/association.source_db_id=db.id</map>
         <map>type/synonym.type_id=term.id</map>
         <map>parentfk:term2term.term2_id</map>
+        <map>parentfk:term2term_metadata.term2_id</map>
         <map>subset/term_subset.subset_id=term.id</map>
       </dbstag_metadata>
       <xsl:apply-templates select="*/source"/>
@@ -68,6 +76,10 @@
       <xsl:apply-templates select="*/term/relationship"/>
       <xsl:apply-templates select="*/term/intersection_of"/>
       <xsl:apply-templates select="assocs/dbset/prod"/>
+      <xsl:apply-templates select="*/instance"/>
+
+      <!-- experimental -->
+      <xsl:apply-templates select="//homologset"/>
     </godb_prestore>
   </xsl:template>
 
@@ -145,7 +157,9 @@
       <xsl:apply-templates select="synonym"/>
       <xsl:apply-templates select="subset"/>
       <xsl:apply-templates select="alt_id"/>
-      <xsl:apply-templates select="xref_analog"/>
+      <xsl:apply-templates select="xref_analog|xref"/>
+      <xsl:apply-templates select="consider|replaced_by"/>
+      <xsl:apply-templates select="property_value"/>
     </term>
   </xsl:template>
 
@@ -173,7 +187,7 @@
       <xsl:apply-templates select="def"/>
       <xsl:apply-templates select="synonym"/>
       <xsl:apply-templates select="alt_id"/>
-      <xsl:apply-templates select="xref_analog"/>
+      <xsl:apply-templates select="xref_analog|xref"/>
     </term>
   </xsl:template>
 
@@ -304,7 +318,7 @@
       <xsl:if test="@scope != ''">
         <type>
           <term>
-            <term_type>synonym_type</term_type>
+            <term_type>synonym_scope</term_type>
             <name>
               <xsl:value-of select="@scope"/>
             </name>
@@ -313,6 +327,19 @@
             </acc>
           </term>
         </type>
+      </xsl:if>
+      <xsl:if test="@synonym_type != ''">
+        <category>
+          <term>
+            <term_type>synonym_type</term_type>
+            <name>
+              <xsl:value-of select="key('k-synonymtypedef',@synonym_type)/name"/>
+            </name>
+            <acc>
+              <xsl:value-of select="@synonym_type"/>
+            </acc>
+          </term>
+        </category>
       </xsl:if>
     </term_synonym>
   </xsl:template>
@@ -351,7 +378,7 @@
     </term_synonym>
   </xsl:template>
     
-  <xsl:template match="xref_analog">
+  <xsl:template match="xref_analog|xref">
     <term_dbxref>
       <dbxref>
         <xref_dbname>
@@ -363,6 +390,40 @@
       </dbxref>
       <is_for_definition>0</is_for_definition>
     </term_dbxref>
+  </xsl:template>
+    
+  <xsl:template match="property_value">
+    <term_property>
+      <property_key>
+        <term>
+          <acc>
+            <xsl:value-of select="type"/>
+          </acc>
+        </term>
+      </property_key>
+      <property_val>
+        <xsl:value-of select="value"/>
+      </property_val>
+    </term_property>
+  </xsl:template>
+
+  <xsl:template match="consider|replaced_by">
+    <term2term_metadata>
+      <type>
+        <term>
+          <acc>
+            <xsl:value-of select="name(.)"/>
+          </acc>
+        </term>
+      </type>
+      <term1>
+        <term>
+          <acc>
+            <xsl:value-of select="."/>
+          </acc>
+        </term>
+      </term1>
+    </term2term_metadata>
   </xsl:template>
     
   <xsl:template match="dbxref" mode="is_for_definition">
@@ -425,19 +486,12 @@
             <xsl:value-of select="prodtype"/>
           </acc>
         </term>
-      </type>
+      </type> 
       <species>
         <ncbi_taxa_id>
           <xsl:value-of select="prodtaxa"/>
         </ncbi_taxa_id>
       </species>
-      <xsl:if test="secondary_prodtaxa">
-        <secondary_species>
-          <ncbi_taxa_id>
-            <xsl:value-of select="secondary_prodtaxa"/>
-          </ncbi_taxa_id>
-        </secondary_species>
-      </xsl:if>
       <xsl:apply-templates select="assoc"/>
       <xsl:apply-templates select="prodsyn"/>
     </gene_product>
@@ -464,6 +518,8 @@
         </is_not>
       </xsl:if>
       <xsl:apply-templates select="qualifier"/>
+      <xsl:apply-templates select="species_qualifier"/>
+      <xsl:apply-templates select="properties"/>
       <xsl:apply-templates select="evidence"/>
       <assocdate>
         <xsl:value-of select="assocdate"/>
@@ -486,12 +542,43 @@
         <acc>
           <xsl:value-of select="."/>
         </acc>
+        <!-- duplicate ID in name column -->
         <name>
           <xsl:value-of select="."/>
         </name>
         <term_type>association_qualifier</term_type>
       </term>
     </association_qualifier>
+  </xsl:template>
+
+  <xsl:template match="properties">
+    <xsl:for-each select="link">
+      <association_property>
+        <type>
+          <term>
+            <acc>
+              <xsl:value-of select="type"/>
+            </acc>
+          </term>
+        </type>
+        <term>
+          <acc>
+            <!-- todo: check for nested -->
+            <xsl:value-of select="to"/>
+          </acc>
+        </term>
+      </association_property>
+    </xsl:for-each>
+  </xsl:template>
+
+  <xsl:template match="species_qualifier">
+    <association_species_qualifier>
+      <species>
+        <ncbi_taxa_id>
+          <xsl:value-of select="."/>
+        </ncbi_taxa_id>
+      </species>
+    </association_species_qualifier>
   </xsl:template>
 
   <xsl:template match="evidence">
@@ -511,6 +598,130 @@
     <evidence_dbxref>
       <xsl:apply-templates select="." mode="dbxref"/>
     </evidence_dbxref>
+  </xsl:template>
+
+
+  <!-- GO.xrf_abs data stored as generic instance data -->
+  <xsl:template match="instance[instance_of='GOMetaModel:Database']">
+    <db>
+      <name>
+        <xsl:value-of select="id"/>
+      </name>
+      <xsl:if test="property_value[type='GOMetaModel:database']">
+        <fullname>
+          <xsl:value-of select="property_value[type='GOMetaModel:database']/value"/>
+        </fullname>
+      </xsl:if>
+      <xsl:if test="property_value[type='GOMetaModel:object']">
+        <datatype>
+          <xsl:value-of select="property_value[type='GOMetaModel:object']/value"/>
+        </datatype>
+      </xsl:if>
+      <xsl:if test="property_value[type='GOMetaModel:generic_url']">
+        <generic_url>
+          <xsl:value-of select="property_value[type='GOMetaModel:generic_url']/value"/>
+        </generic_url>
+      </xsl:if>
+      <xsl:if test="property_value[type='GOMetaModel:url_syntax']">
+        <url_syntax>
+          <xsl:value-of select="property_value[type='GOMetaModel:url_syntax']/value"/>
+        </url_syntax>
+      </xsl:if>
+      <xsl:if test="property_value[type='GOMetaModel:url_example']">
+        <url_example>
+          <xsl:value-of select="property_value[type='GOMetaModel:url_example']/value"/>
+        </url_example>
+      </xsl:if>
+    </db>
+  </xsl:template>
+
+  <!-- homology data (EXPERIMENTAL) - comes from reference genomes -->
+  <xsl:template match="homologset">
+    <!-- we create a term for the disease/homology set/human gene -->
+    <term>
+      <acc>
+        <xsl:value-of select="@id"/>
+      </acc>
+      <name>
+        <xsl:value-of select="tagval[@type='HS_gene_symbol']"/>
+      </name>
+      <term_type>
+        <xsl:text>reference_genome</xsl:text>
+      </term_type>
+      <term_definition>
+        <term_definition>
+          <xsl:value-of select="tagval[@type='OMIM_Disease_name']"/>
+        </term_definition>
+      </term_definition>
+
+      <term2term>
+        <type>
+          <term>
+            <acc>is_a</acc>
+          </term>
+        </type>
+        <term1>
+          <term>
+            <name>
+              <xsl:text>collection of homologous genes</xsl:text>
+            </name>
+            <acc>
+              <xsl:text>REFGENOMES:1</xsl:text>
+            </acc>
+            <term_type>
+              <xsl:text>reference_genomes</xsl:text>
+            </term_type>
+          </term>
+        </term1>
+      </term2term>
+    </term>
+    <xsl:for-each select="member">
+      <gene_product>
+        <dbxref>
+          <xref_dbname>
+            <xsl:value-of select="substring-before(@ref,':')"/>
+          </xref_dbname>
+          <xref_key>
+            <xsl:value-of select="substring-after(@ref,':')"/>
+          </xref_key>
+        </dbxref>
+        <association>
+          <term>
+            <acc>
+              <xsl:value-of select="../@id"/>
+            </acc>
+          </term>
+          <source_db>
+            <db>
+              <name>
+                <xsl:text>reference_genomes</xsl:text>
+              </name>
+            </db>
+          </source_db>
+          <association_qualifier>
+            <term>
+              <acc>
+                <xsl:text>oban:evolutionary_ancestory_of</xsl:text>
+              </acc>
+              <name>evolutionary ancestor of</name>
+              <term_type>relation</term_type>
+            </term>
+          </association_qualifier>
+          <evidence>
+            <code>
+              <xsl:text>TAS</xsl:text>
+            </code>
+            <seq_acc>
+              <xsl:text>TEST</xsl:text>
+            </seq_acc>
+            <dbxref>
+              <xref_dbname>test</xref_dbname>
+              <xref_key>1234</xref_key>
+            </dbxref>
+          </evidence>
+        </association>
+      </gene_product>
+    </xsl:for-each>
   </xsl:template>
 
   <xsl:template match="text()|@*">

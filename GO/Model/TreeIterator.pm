@@ -1,4 +1,4 @@
-# $Id: TreeIterator.pm,v 1.5 2006/03/23 23:34:22 sshu Exp $
+# $Id: TreeIterator.pm,v 1.6 2007/05/29 06:00:01 girlwithglasses Exp $
 #
 # This GO module is maintained by Chris Mungall <cjm@fruitfly.org>
 #
@@ -32,10 +32,8 @@ The array looks like this :
 [9277, 'isa', 5618]
 ]
 
-3674 is selected iff its the child 
-of 3674.  9277 is selected iff it  return \@list;
-s
-the child of 5618.
+3674 is selected iff its the child of 3673.  
+9277 is selected iff it is the child of 5618.
 
 =cut
 
@@ -96,7 +94,7 @@ sub new {
   $self->{'selected_array'} = shift;
   $self->{'show_kids'} = shift;
   $self->{'closed_below'} = shift;
-  $self->{'nit'} = $self->{'graph'}->create_iterator;
+  $self->{'nit'} = $self->{'graph'}->create_iterator({compact=>1});
   $self->{'bootstrap_mode'} = 0;
 #  $self->SUPER::_initialize(@_);
 #  $self->{'current_path'};

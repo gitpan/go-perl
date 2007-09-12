@@ -1,4 +1,4 @@
-# $Id: base_parser.pm,v 1.14 2005/12/03 00:09:04 cmungall Exp $
+# $Id: base_parser.pm,v 1.16 2007/07/06 23:36:43 cmungall Exp $
 #
 #
 # see also - http://www.geneontology.org
@@ -147,11 +147,16 @@ sub fire_source_event {
     my @fileparts = split(/\//, $file);
     my @stat = stat($file);
     my $mtime = $stat[9];
+    my $parsetime = time;
+    my $md5 = md5_hex($fileparts[-1]);
     $self->event(source => [
+				     [source_id => $file ],
 				     [source_type => 'file'],
+				     [source_fullpath => $file ],
 				     [source_path => $fileparts[-1] ],
-				     [source_md5 => md5_hex($fileparts[-1])],
+				     [source_md5 => $md5],
 				     [source_mtime => $mtime ],
+				     [source_parsetime => $parsetime ],
 				    ]
 			 );
     return;
@@ -493,7 +498,6 @@ sub acc_not_found {
     }
     return 0;
 }
-
 
 sub dtd {
     undef;

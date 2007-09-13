@@ -298,5 +298,5 @@ as perl itself.
 =cut
 
 package go-perl;
-$VERSION='0.07_pre';
+$VERSION='0.07';
 1;

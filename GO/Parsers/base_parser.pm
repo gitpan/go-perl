@@ -28,6 +28,7 @@ use Carp;
 use FileHandle;
 use Digest::MD5 qw(md5_hex);
 use GO::Parser;
+use Data::Stag qw(:all);
 use base qw(Data::Stag::BaseGenerator Exporter);
 use strict qw(subs vars refs);
 
@@ -446,7 +447,6 @@ sub litemode {
     $self->{_litemode} = shift if @_;
     return $self->{_litemode};
 }
-
 
 =head2 acc2name_h
 

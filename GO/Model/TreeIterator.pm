@@ -1,4 +1,4 @@
-# $Id: TreeIterator.pm,v 1.6 2007/05/29 06:00:01 girlwithglasses Exp $
+# $Id: TreeIterator.pm,v 1.7 2007/08/21 12:25:35 girlwithglasses Exp $
 #
 # This GO module is maintained by Chris Mungall <cjm@fruitfly.org>
 #
@@ -32,7 +32,7 @@ The array looks like this :
 [9277, 'isa', 5618]
 ]
 
-3674 is selected iff its the child of 3673.  
+3674 is selected iff it is the child of 3673.  
 9277 is selected iff it is the child of 5618.
 
 =cut
@@ -94,7 +94,8 @@ sub new {
   $self->{'selected_array'} = shift;
   $self->{'show_kids'} = shift;
   $self->{'closed_below'} = shift;
-  $self->{'nit'} = $self->{'graph'}->create_iterator({compact=>1});
+  my $compact = shift || 0;
+  $self->{'nit'} = $self->{'graph'}->create_iterator({compact=>$compact});
   $self->{'bootstrap_mode'} = 0;
 #  $self->SUPER::_initialize(@_);
 #  $self->{'current_path'};
@@ -195,8 +196,8 @@ sub next_node_instance {
       $parent_array->[$depth] = $ni->term->public_acc;
     } elsif ($previous_depth > $depth) {
       while ($previous_depth > $depth) {
-	$previous_depth -= 1;
-	pop @$parent_array;
+        $previous_depth -= 1;
+        pop @$parent_array;
       }
       $parent_array->[$depth] = $ni->term->public_acc;
     } elsif ($previous_depth < $depth) {

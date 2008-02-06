@@ -1,4 +1,4 @@
-# $Id: GeneProduct.pm,v 1.10 2006/09/14 00:43:56 cmungall Exp $
+# $Id: GeneProduct.pm,v 1.11 2007/09/13 12:44:47 girlwithglasses Exp $
 #
 # This GO module is maintained by Chris Mungall <cjm@fruitfly.org>
 #
@@ -387,7 +387,7 @@ sub to_fasta {
                       $self->species ? sprintf("species:%s \"%s\"", $self->species->ncbi_taxa_id, $self->species->binomial) : '-',                      
                       $hdrinfo,
                       join(" ",
-                           map {$_->as_str} @{$seq->xref_list})
+                           map {$_->as_str} @{$seq->xref_list || []})
                      );
         }
         $seq->description($desc);

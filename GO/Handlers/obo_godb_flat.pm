@@ -1,4 +1,4 @@
-# $Id: obo_godb_flat.pm,v 1.4 2007/06/12 21:59:18 benhitz Exp $
+# $Id: obo_godb_flat.pm,v 1.5 2007/12/27 00:19:28 benhitz Exp $
 #
 # This GO module is maintained by Chris Mungall <cjm@fruitfly.org>
 #
@@ -36,29 +36,32 @@ use GO::Parsers::ParserEventNames;
 use base qw(GO::Handlers::base);
 use strict qw(vars refs);
 
-my %TABLES = (
-    dbxref       => [ qw(id xref_key xref_keytype xref_dbname) ], # must append many dbxrefs
-    term         => [ qw(id name term_type acc is_obsolete is_root) ], # must append SO terms, qualifiers
-    gene_product => [ qw(id symbol dbxref_id species_id secondary_species_id type_id full_name) ],
-    association  => [ qw(id term_id gene_product_id is_not role_group assocdate source_db_id) ],
-    db           => [ qw(id name fullname datatype generic_url url_syntax) ], # last 4 all null in current load
-    evidence     => [ qw(id code association_id dbxref_id seq_acc) ],
-    association_qualifier => [ qw(id association_id term_id value) ], # must append 
-    species               => [ qw(id ncbi_taxa_id common_name lineage_string genus species) ],
-    # linking tables
-    gene_product_synoynm => [ qw(gene_product_id product_synonym)],
-    evidence_dbxref      => [ qw(evidence_id dbxref_id) ]
-    );
-    
-my %fh = ( map (("$_.txt" => 0), keys %TABLES));
 
+use constant DELIMITER => "\t"; # separates fields
 
 sub init {
 
     my $self = shift;
 
     $self->SUPER::init();
-    $self->{pk} = { map (($_ => 0), keys %TABLES) };
+
+    $self->{tables} = {
+	dbxref       => [ qw(id xref_key xref_keytype xref_dbname xref_desc) ], # must append many dbxrefs
+	term         => [ qw(id name term_type acc is_obsolete is_root) ], # must append SO terms, qualifiers
+	gene_product => [ qw(id symbol dbxref_id species_id  type_id full_name) ],
+	association  => [ qw(id term_id gene_product_id is_not role_group assocdate source_db_id) ],
+	db           => [ qw(id name fullname datatype generic_url url_syntax) ], # last 4 all null in current load
+	evidence     => [ qw(id code association_id dbxref_id seq_acc) ],
+	association_qualifier => [ qw(id association_id term_id value) ], # must append 
+	species               => [ qw(id ncbi_taxa_id common_name lineage_string genus species) ],
+	# linking tables
+	gene_product_synonym => [ qw(gene_product_id product_synonym)],
+	evidence_dbxref      => [ qw(evidence_id dbxref_id) ]
+	};
+    
+    $self->{fhs}  = { map (("$_.txt" => 0), keys %{$self->{tables}}) };
+
+    $self->{pk} = { map (($_ => 0), keys %{$self->{tables}} ) };
 
 }
     
@@ -102,7 +105,7 @@ sub e_prod {
 
     my $proddb = $self->up_to('dbset')->get_proddb;
 
-    $self->file('gene_product.txt'); # we actually to map these to file handles somewhere
+#    $self->file('gene_product.txt'); done in add_gene_product
 
     my $gp_id = $self->add_gene_product($prod, $proddb);
     
@@ -111,66 +114,54 @@ sub e_prod {
     for my $assoc (@assocs) {
 
 	# first dump the ASSOCIATION table
-	$self->file('association.txt');       
-	$self->write(join("\t", (
-				 ++$self->{pk}{association},
-				 $self->get_term_id($assoc->get_termacc),
-				 $gp_id,
-				 stag_get($assoc, IS_NOT),
-				 '\N', # role_group current always NULL
-				 $assoc->sget_assocdate,
-				 $self->get_sourcedb_id($assoc->sget_source_db),))
-		     );
-
-        $self->write("\n");
+	$self->dump_table('association', [
+					  ++$self->{pk}{association},
+					  $self->get_term_id($assoc->get_termacc),
+					  $gp_id,
+					  stag_get($assoc, IS_NOT),
+					  '\N', # role_group current always NULL
+					  $assoc->sget_assocdate,
+					  $self->get_sourcedb_id($assoc->sget_source_db)
+					  ]);
+ 
 	# now the qualifiers
-	$self->file('association_qualifier.txt');
+
 	for my $qual ($assoc->get_qualifier) {
+	    $self->dump_table('association_qualifier', [
+							++$self->{pk}{association_qualifier},
+							$self->{pk}{association},
+							$self->get_term_id($qual, 'association_qualifier'),
+							'\N', # value is currently always NULL
+							]);
 
-	    $self->write(join("\t", (
-				     ++$self->{pk}{association_qualifier},
-				     $self->{pk}{association},
-				     $self->get_term_id($qual, 'association_qualifier'),
-				     '\N',)) # value is currently always NULL
-			 );
-	    $self->write("\n");
 	}
-
 	# now evidence and evidence dbxref
 	for my $ev ($assoc->get_evidence) {
 	    
-	    $self->file('evidence.txt');
-	    $self->write(join("\t", (
-				     ++$self->{pk}{evidence},
-				     $ev->sget_evcode,
-				     $self->{pk}{association},
-				     $self->get_dbxref_id($ev->sget_ref), # only the first one here
-				     $ev->sget_with || "",  # put only the first one here, I dunno why
-				     ))
-			 );
-	    $self->write("\n");
 
-	    $self->file('evidence_dbxref.txt');
+	    $self->dump_table('evidence', [
+					   ++$self->{pk}{evidence},
+					   $ev->sget_evcode,
+					   $self->{pk}{association},
+					   $self->get_dbxref_id($ev->sget_ref), # only the first one here
+					   $ev->sget_with || "",  # put only the first one here, I dunno why
+					   ]);
+
 	    for my $ref ($ev->get_ref) {
 
 		next; # skip whole loop until we figure this out.
-		$self->write(join("\t", (
-					  $self->{pk}{evidence},
-					  $self->get_dbxref_id($ref),
-					  ))
-			     );
-		$self->write("\n");
-
+		$self->dump_table('evidence_dbxref', [
+						      $self->{pk}{evidence},
+						      $self->get_dbxref_id($ref),
+						      ]);
 	    }
+
 	    for my $with ($ev->get_with) {
 
-		$self->write(join("\t", (
-					  $self->{pk}{evidence},
-					  $self->get_dbxref_id($with),
-					  ))
-			     );
-		$self->write("\n");
-
+		$self->dump_table('evidence_dbxref', [
+						      $self->{pk}{evidence},
+						      $self->get_dbxref_id($with),
+						      ]);
 	    }
 
 				     
@@ -191,35 +182,34 @@ sub add_gene_product {
 
     if ($self->apph->dbxref2gpid_h->{$proddb}->{$acc}) {
     # check to see if we've already added it
-#	warn "checking $proddb, $acc ".$self->apph->dbxref2gpid_h->{$proddb}->{$acc};
     # unique key for gene product is actually dbxref_id, but need the gp_id
     } else {
 #	warn "$proddb, $acc, does not exist, creating";
     
 	# if not, write a line to gene_product.txt
 	# new dbxref_id is added by get_dbxref_id.
-	$self->write(join("\t", (
-				 ++$self->{pk}{gene_product},
-				 $prod->sget_prodsymbol,
-				 $self->get_dbxref_id($proddb, $acc),
-				 $self->get_taxon_id($prod->sget_prodtaxa),
-				 '\N', # currently no secondary species ids
-				 $self->get_term_id($prod->get_prodtype, 'sequence'),
-				 $prod->sget_prodname || "") )# that should be full name.
-		     );
+	$self->dump_table('gene_product', [
+					   ++$self->{pk}{gene_product},
+					   $prod->sget_prodsymbol,
+					   $self->get_dbxref_id($proddb, $acc),
+					   $self->get_taxon_id($prod->sget_prodtaxa),
+#					   '\N', # currently no secondary species ids
+					   $self->get_term_id($prod->get_prodtype, 'sequence'),
+					   $prod->sget_prodname || "", # that should be full name.
+					   ]);
 
-	$self->write("\n");
 	$self->apph->dbxref2gpid_h->{$proddb}->{$acc} = $self->{pk}{gene_product};
 
     }
 
     # add synoyms if necessary
-    $self->file('gene_product_synonym.txt');
 
     for my $syn ($prod->get_prodsyn) {
-
-	$self->write(join("\t", ($self->{pk}{gene_product}, $syn)));
-	$self->write("\n");
+	
+	$self->dump_table('gene_product_synonym', [
+						   $self->{pk}{gene_product}, 
+						   $syn,
+						   ]);
     }
 
     return $self->apph->dbxref2gpid_h->{$proddb}->{$acc};
@@ -259,18 +249,16 @@ sub get_dbxref_id {
     # doesn't exist, add it to dbxref file and hash
     my $oldfile = $self->file;
 
-    $self->file('dbxref.txt');
+    $self->dump_table('dbxref', [
+				 ++$self->{pk}{dbxref},
+				 $key,
+				 '\N',
+				 $dbname,
+				 '\N',
+				 ]);
 
-    $self->write(join("\t", (
-			     ++$self->{pk}{dbxref},
-			     $key,
-			     '\N',
-			     $dbname,))
-		 );
 
-    $self->write("\n");
-
-    $self->file($oldfile); # set it back
+    $self->file($oldfile); # set filename back
 
     $self->apph->dbxref2id_h->{$ucDb}->{$ucKey} = $self->{pk}{dbxref};  # return the id
 
@@ -295,19 +283,16 @@ sub get_term_id {
     # doesn't exist, add it to dbxref file and hash
     my $oldfile = $self->file;
 
-    $self->file('term.txt');
+    $self->dump_table('term', [
+			       ++$self->{pk}{term},
+			       $term,
+			       $termType,
+			       $acc,
+			       0,    # never is_obsolete
+			       0,  # never is_root
+			       ]);
 
-    $self->write(join("\t", (
-			     ++$self->{pk}{term},
-			     $term,
-			     $termType,
-			     $acc,
-			     0,    # never is_obsolete
-			     0,))  # never is_root
-		 );
-    $self->write("\n");
-
-    $self->file($oldfile); # set it back
+    $self->file($oldfile); # set file name back;
 
     $self->apph->acc2id_h->{$term} = $self->{pk}{term};  # return the id
 
@@ -324,19 +309,16 @@ sub get_sourcedb_id {
     # doesn't exist, add it to file and hash
     my $oldfile = $self->file;
 
-    $self->file('db.txt');
-
-    $self->write(join("\t", (
+    $self->dump_table('db', [
 			     ++$self->{pk}{db},
 			     $db,
 			     '\N',
 			     '\N',
 			     '\N',   
-			     '\N',))  # last 4 columns always null
-		 );
-    $self->write("\n");
+			     '\N',  # last 4 columns always null
+			     ]);
 
-    $self->file($oldfile); # set it back
+    $self->file($oldfile); # set file name back
 
     $self->apph->source2id_h->{$db} = $self->{pk}{db};  # return the id
 
@@ -351,30 +333,37 @@ sub get_taxon_id {
     warn "Could not find id in db for taxon $taxonId, adding\n";
 
     my $oldfile = $self->file;
+    
+    $self->dump_table('species', [
+				  ++$self->{pk}{species},
+				  $taxonId,
+				  '\N',  # name unknown
+				  '\N',  # lineage unknown
+				  '\N',  # genuss unknown
+				  '\N',  # species unknown
+				  ]);
 
-    $self->file('species.txt');
-
-    $self->write(join("\t", (
-			     ++$self->{pk}{species},
-			     $taxonId,
-			     '\N',  # name unknown
-			     '\N',  # lineage unknown
-			     '\N',  # genuss unknown
-			     '\N',))  # species unknown
-		 );
-    $self->write("\n");
-
-    $self->file($oldfile); # set it back
+    $self->file($oldfile); # set file name back;
 
     $self->apph->taxon2id_h->{$taxonId} = $self->{pk}{species};  # return the id
-
 
 }
 
 
 sub file {
 # overrides Data::Stag::Writer file
+# with no arguments, returns current filename
+# with argument, sets file handle to file handle from {fhs} hash
+# if file handle not open, opens with safe_fh
+# returns "new" file name.
     my $self = shift;
+
+    my $fh = $self->{fhs}; # hash of filehandles
+
+    # create the keys if they don't exist, suppresses warnings
+    # first time this is called, might be STDOUT or something
+    $self->{_file} = undef unless $self->{_file}; 
+    $self->{_fh} = undef unless $self->{_fh};
 
     if (@_) {
 	
@@ -382,14 +371,14 @@ sub file {
 	$self->{_fh} = undef;
     }
 
-    unless ( $fh{$self->{_file}} ) {
+    unless  ( $fh->{$self->{_file}} ) {
 
 #	print STDERR "opening file $self->{_file}...\n";
-	$fh{$self->{_file}} = $self->safe_fh;
+	$fh->{$self->{_file}} = $self->safe_fh;
 
     }
     
-    $self->{_fh} = $fh{$self->{_file}};
+    $self->{_fh} = $fh->{$self->{_file}} if exists $self->{_file};
 
     return $self->{_file};
 
@@ -398,11 +387,35 @@ sub file {
 sub close_files {
 
     my $self = shift;
-    for my $fh (values %fh) {
+    for my $fh (values %{$self->{fhs}}) {
 
-	close($fh) if $fh;
+	close($fh) if $fh && $fh ;
     }
 
-    close($self->{_fh}) if $self->{_fh};
+#    close($self->{_fh}) if $self->{_fh};
 }
+
+sub tables {
+
+    $_[0]->{tables};
+
+}
+
+sub dump_table {
+
+    my $self = shift;
+    my $tab = shift;
+    my $fieldsRef = shift;
+
+    die "Don't know anything about $tab" if ( !$self->{tables}->{$tab} || !scalar (@{ $self->{tables}->{$tab} }) );
+
+    die "Tried to write wrong number of fields $tab" if scalar(@$fieldsRef) != scalar(@{ $self->{tables}->{$tab} });
+
+    $self->file("$tab.txt");
+
+    $self->write(join(DELIMITER, @$fieldsRef));
+    $self->write("\n");
+}
+
 1;
+

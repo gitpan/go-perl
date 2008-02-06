@@ -1,4 +1,4 @@
-# $Id: base_parser.pm,v 1.16 2007/07/06 23:36:43 cmungall Exp $
+# $Id: base_parser.pm,v 1.17 2008/01/07 00:27:18 cmungall Exp $
 #
 #
 # see also - http://www.geneontology.org

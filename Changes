@@ -131,5 +131,11 @@ VERSION 0.07
 
 2007-09-09      - [cjm] GO::Parsers::obo_text_parser - synonymtypedef now uses ID and NAME as sub-elements
 
+VERSION 0.08
+============
 
+2007-01-06      - [cjm] includes modified xslt xref handling for OBO_REL xrefs
+2007-01-06      - [cjm] added test for handling of xrefs in OBO_REL 
+2007-01-17      - [cjm] support for instances
+2007-01-22      - [cjm] fixed bug in exporting synonymtypedefs - was not quoting description/name
 

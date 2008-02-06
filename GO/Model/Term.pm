@@ -1,4 +1,4 @@
-# $Id: Term.pm,v 1.23 2007/09/12 03:07:30 cmungall Exp $
+# $Id: Term.pm,v 1.24 2008/01/17 20:08:14 cmungall Exp $
 #
 # This GO module is maintained by Chris Mungall <cjm@fruitfly.org>
 #
@@ -103,6 +103,7 @@ equivalent_to_union_of_term_list
 disjoint_from_term_list
 consider_list
 replaced_by_list
+is_instance
 stag is_anonymous is_cyclic is_transitive is_symmetric is_anti_symmetric is_reflexive
 inverse_of transitive_over domain range logical_definition); }
 

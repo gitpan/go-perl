@@ -1,4 +1,4 @@
-# $Id: Evidence.pm,v 1.3 2005/03/08 00:30:26 sshu Exp $
+# $Id: Evidence.pm,v 1.4 2007/10/24 17:49:28 sjcarbon Exp $
 #
 # This GO module is maintained by Chris Mungall <cjm@fruitfly.org>
 #
@@ -269,9 +269,12 @@ list of valid evidence codes
 
 =cut
 
+## TODO: This should be fixed to get the values from the live DB.
 sub valid_codes {
-    qw(IMP IGI IPI ISS IDA IEP IEA TAS NAS ND NR);
+  #qw(IMP IGI IPI ISS IDA IEP IEA TAS NAS ND NR);
+  qw(IC IDA IEP IGC IGI IMP IPI ISS NAS ND NR RCA TAS);
 }
+
 
 sub _initialize 
 {

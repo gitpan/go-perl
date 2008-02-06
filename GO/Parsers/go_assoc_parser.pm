@@ -1,4 +1,4 @@
-# $Id: go_assoc_parser.pm,v 1.16 2007/07/11 05:38:00 cmungall Exp $
+# $Id: go_assoc_parser.pm,v 1.17 2007/11/29 01:05:58 cmungall Exp $
 #
 #
 # see also - http://www.geneontology.org
@@ -359,7 +359,7 @@ sub parse_fh {
 	    $self->event(SOURCE_DB, $source_db)
 		    if $source_db;
 	    $self->event(TERMACC, $termacc);
-            my @quals = map lc,split(/[;\,]\s*/,$qualifier || '');
+            my @quals = map lc,split(/[\|]\s*/,$qualifier || '');
 	    my $is_not = grep {/^not$/i} @quals;
 	    $self->event(IS_NOT, $is_not || '0');
 	    $self->event(QUALIFIER, $_) foreach @quals;

@@ -2,6 +2,7 @@
 <!DOCTYPE stylesheet [
   <!ENTITY oboInOwl "http://www.geneontology.org/formats/oboInOwl#">
   <!ENTITY oboContent "http://purl.org/obo/owl/">
+  <!ENTITY oban "http://purl.org/obo/oban/">
   <!ENTITY xref "http://purl.org/obo/owl/">
   <!ENTITY xsd "http://www.w3.org/2001/XMLSchema#">
   <!ENTITY owl "http://www.w3.org/2002/07/owl#">
@@ -10,6 +11,7 @@
   xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" 
   xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#" 
+  xmlns:oban="http://purl.org/obo/oban/"
   xmlns:owl="http://www.w3.org/2002/07/owl#"
   xmlns:oboInOwl="&oboInOwl;"
   xmlns:oboContent="&oboContent;"
@@ -35,6 +37,8 @@
   <!-- Indexes -->
   <!-- *********************************************** -->
   <xsl:key name="k_idspace" match="obo/header/idspace" use="local"/>
+  <xsl:key name="k_instance" match="obo/instance" use="id"/>
+  <xsl:key name="k_relation" match="obo/typedef" use="id"/>
 
   <!-- *********************************************** -->
   <!-- block passthru -->
@@ -352,6 +356,7 @@
       <xsl:apply-templates select="subset"/>
       <xsl:apply-templates select="def"/>
       <xsl:apply-templates select="synonym"/>
+      <xsl:apply-templates select="consider|replaced_by"/>
       <xsl:apply-templates select="namespace"/>
       <xsl:apply-templates select="alt_id"/>
       <xsl:apply-templates select="xref_analog|xref"/>
@@ -470,12 +475,21 @@
           <xsl:apply-templates mode="about" select="type"/>
         </owl:ObjectProperty>
       </owl:onProperty>
-      <!-- TODO: For now we make the assumption that all relations
-           are existential (this is the case for all OBO relations)
-           may not be the case for non-foundry ontologies -->
-      <owl:someValuesFrom>
-        <xsl:apply-templates mode="resource" select="to"/>
-      </owl:someValuesFrom>
+      <xsl:choose>
+        <xsl:when test="key('k_instance',to)">
+          <owl:hasValue>
+            <xsl:apply-templates mode="resource" select="to"/>
+          </owl:hasValue>
+        </xsl:when>
+        <xsl:otherwise>
+          <!-- TODO: For now we make the assumption that all relations
+               are existential (this is the case for all OBO relations)
+               may not be the case for non-foundry ontologies -->
+          <owl:someValuesFrom>
+            <xsl:apply-templates mode="resource" select="to"/>
+          </owl:someValuesFrom>
+        </xsl:otherwise>
+      </xsl:choose>
     </owl:Restriction>
   </xsl:template>
 
@@ -495,9 +509,11 @@
   </xsl:template>
 
   <xsl:template match="namespace">
-    <oboInOwl:hasOBONamespace>
-      <xsl:value-of select="."/>
-    </oboInOwl:hasOBONamespace>
+    <xsl:if test=".!='unknown'">
+      <oboInOwl:hasOBONamespace>
+        <xsl:value-of select="."/>
+      </oboInOwl:hasOBONamespace>
+    </xsl:if>
   </xsl:template>
   
   <xsl:template match="alt_id">
@@ -518,6 +534,17 @@
     </oboInOwl:inSubset>
   </xsl:template>
 
+  <xsl:template match="consider">
+    <oboInOwl:consider>
+      <xsl:apply-templates mode="about" select="."/>
+    </oboInOwl:consider>
+  </xsl:template>
+
+  <xsl:template match="replaced_by">
+    <oboInOwl:replacedBy>
+      <xsl:apply-templates mode="about" select="."/>
+    </oboInOwl:replacedBy>
+  </xsl:template>
 
   <!-- *********************************************** -->
   <!-- Relations -->
@@ -543,6 +570,11 @@
       </xsl:when>
       <xsl:when test="is_metadata_tag=1">
         <xsl:element name="owl:AnnotationProperty">
+          <xsl:apply-templates mode="detail" select="."/>
+        </xsl:element>
+      </xsl:when>
+      <xsl:when test="contains(range,'xsd:')">
+        <xsl:element name="owl:DatatypeProperty">
           <xsl:apply-templates mode="detail" select="."/>
         </xsl:element>
       </xsl:when>
@@ -615,8 +647,6 @@
   <!-- Instances -->
   <!-- *********************************************** -->
 
-  <!-- Yes, obo supports instances too -->
-
   <xsl:template match="instance">
     <xsl:element name="rdf:Description">
       <xsl:apply-templates select="id"/>
@@ -676,6 +706,22 @@
       </xsl:choose>
     </xsl:element>
   </xsl:template>
+
+  <!-- *********************************************** -->
+  <!-- Annotations -->
+  <!-- *********************************************** -->
+  <!-- We treat obo annotations as reified links for now.
+       Future versions may use Named Graphs-->
+  <xsl:template match="annotation">
+    <oban:Annotation>
+      <oban:subject>
+        <xsl:apply-templates mode="resource" select="subject"/>
+      </oban:subject>
+      <oban:object>
+        <xsl:apply-templates mode="resource" select="subject"/>
+      </oban:object>
+    </oban:Annotation>
+  </xsl:template>
     
   <!-- *********************************************** -->
   <!-- Identifiers -->
@@ -707,18 +753,32 @@
   </xsl:template>
 
   <xsl:template mode="translate-id" match="@*|*">
+
+    <!-- split the bipartite OBO ID in two -
+         -->
     <xsl:variable name="idspace">
       <xsl:value-of select="substring-before(.,':')"/>
     </xsl:variable>
     <xsl:variable name="localid">
       <xsl:value-of select="substring-after(.,':')"/>
     </xsl:variable>
+
+    <!-- handle the ID based on its content -->
     <xsl:choose>
-      <!-- anonymous classes -->
+
+      <!-- anonymous classes -
+           denoted by an IDSpace of a single underscore -->
       <xsl:when test="$idspace = '_'">
         <xsl:value-of select="$localid"/>
       </xsl:when>
-      <!-- is the idspace mapped? -->
+
+      <!-- builtin -->
+      <xsl:when test="$idspace = 'xsd'">
+        <xsl:text>&xsd;</xsl:text>
+        <xsl:value-of select="$localid"/>
+      </xsl:when>
+
+      <!-- is the idspace mapped in the header of the file? -->
       <xsl:when test="key('k_idspace',substring-before(.,':'))">
         <xsl:value-of select="key('k_idspace',substring-before(.,':'))/global"/>
         <xsl:if test="$localid_prefix">
@@ -726,19 +786,44 @@
         </xsl:if>
         <xsl:value-of select="substring-after(.,':')"/>
       </xsl:when>
-      <!-- idspace is specified but unmapped -->
+
+      <!-- idspace is specified, but not mapped in the header -->
       <xsl:when test="substring-before(.,':')">
         <xsl:text>&oboContent;</xsl:text>
-        <xsl:value-of select="substring-before(.,':')"/>
+        <xsl:value-of select="$idspace"/>
         <xsl:text>#</xsl:text>
-        <xsl:value-of select="substring-before(.,':')"/>
-        <xsl:text>_</xsl:text>
+        <xsl:if test="number(substring($localid,1,1)) or substring($localid,1,1)='0'">
+          <xsl:value-of select="$idspace"/>
+          <xsl:text>_</xsl:text>
+        </xsl:if>
         <xsl:if test="$localid_prefix">
           <xsl:value-of select="$localid_prefix"/>
         </xsl:if>
         <xsl:value-of select="substring-after(.,':')"/>
       </xsl:when>
+
       <!-- no idspace: ID is flat (eg part_of) -->
+
+      <!-- first we check if this ID is for a relation, and that relation is in OBO_REL -->
+      <xsl:when test="key('k_relation',.)/xref_analog/dbname = 'OBO_REL'">
+        <xsl:variable name="new-id">
+          <xsl:value-of select="key('k_relation',.)/xref_analog[dbname='OBO_REL']/acc"/>
+        </xsl:variable>
+        <xsl:choose>
+          <!-- is the idspace mapped? -->
+          <xsl:when test="key('k_idspace','OBO_REL')">
+            <xsl:value-of select="key('k_idspace',substring-before(.,':'))/global"/>
+            <xsl:value-of select="$new-id"/>
+          </xsl:when>
+          <xsl:otherwise>
+            <xsl:text>&oboContent;</xsl:text>
+            <xsl:text>OBO_REL#</xsl:text>
+            <xsl:value-of select="$new-id"/>
+          </xsl:otherwise>
+        </xsl:choose>
+      </xsl:when>
+
+      <!-- flat ID, not in OBO_REL -->
       <xsl:otherwise>
         <xsl:text>&oboContent;</xsl:text>
         <xsl:choose>

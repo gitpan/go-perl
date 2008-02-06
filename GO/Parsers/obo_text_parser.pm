@@ -1,4 +1,4 @@
-# $Id: obo_text_parser.pm,v 1.41 2007/09/12 03:07:30 cmungall Exp $
+# $Id: obo_text_parser.pm,v 1.43 2008/02/05 00:34:15 cmungall Exp $
 #
 #
 # see also - http://www.geneontology.org
@@ -156,19 +156,30 @@ sub parse_fh {
 
                     }
                     else {
-                        $self->parse_err("subsetdef: expect ID \"NAME\", got: $val");
+                        $self->parse_err("synonymtypedef: expect ID \"NAME\", got: $val");
                     }
                 }
                 if ($tag eq 'idspace') {
                     my ($idspace,$global,@rest) = split(' ',$val);
                     if (!$global) {
-                        $self->parse_err("id-mapping requires two columns");
+                        $self->parse_err("idspace requires two columns");
                     }
                     $val =
                       [['local',$idspace],
                        ['global',$global],
                        (@rest ? [COMMENT,join(' ',@rest)] : ()),
                       ];
+                }
+                if ($tag eq 'local-id-mapping') {
+                    if ($val =~ /(\S+)\s+(.*)/) {
+                        # with a local ID mapping we delay binding
+                        $val =
+                          [['local',$1],
+                           ['to',$2]];
+                    }
+                    else {
+                        $self->parse_err("id-mapping requires two columns");
+                    }
                 }
 
                 $self->event($tag=>$val);
@@ -180,6 +191,7 @@ sub parse_fh {
                 }
                 if ($tag eq 'id-mapping') {
                     if ($val =~ /(\S+)\s+(.*)/) {
+                        # bind at parse time
                         if ($id_remap_h{$1}) {
                             $self->parse_err("remapping $1 to $2");
                         }
@@ -541,8 +553,8 @@ sub dbxref {
 #        $db=escape($db);
 #        $acc=escape($acc);
     }
-    #$db =~ s/\s+/_/g;  # HumanDO.obo has spaces in xref
-    #$acc =~ s/\s+/_/g;
+    $db =~ s/\s+/_/g;  # HumanDO.obo has spaces in xref
+    $acc =~ s/\s+/_/g;
     $db = 'NULL' unless $db;
     $acc = 'NULL' unless $acc;
     [DBXREF,[[ACC,$acc],

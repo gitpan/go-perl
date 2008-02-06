@@ -1,3 +1,0 @@
-#!/bin/sh
-owl2fmt.pl -w obo $@
-

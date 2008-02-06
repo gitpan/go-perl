@@ -1,4 +1,4 @@
-# $Id: RDFXML.pm,v 1.9 2007/07/11 05:37:59 cmungall Exp $
+# $Id: RDFXML.pm,v 1.11 2007/11/01 20:40:27 girlwithglasses Exp $
 #
 # This GO module is maintained by Brad Marshall <bradmars@yahoo.com>
 #

@@ -50,6 +50,7 @@ use constant IS_ROOT => 'is_root';
 use constant IS_OBSOLETE => 'is_obsolete';
 use constant BUILTIN => 'builtin';
 use constant IS_A => 'is_a';
+use constant INSTANCE_OF => 'instance_of';
 use constant RELATIONSHIP => 'relationship';
 use constant INTERSECTION_OF => 'intersection_of';
 use constant UNION_OF => 'union_of';
@@ -151,6 +152,7 @@ use constant DBXREFS => 'dbxrefs';
                TERM_DBXREF 
 
   INSTANCE
+             INSTANCE_OF
              PROPERTY_VALUE
                VALUE
                DATATYPE

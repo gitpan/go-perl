@@ -427,6 +427,15 @@ sub e_instance {
     my $name = $inst->sget_name;
     $self->factq('metadata_db:entity_label', [$id, $name]) if $name;
     $self->export_tags($inst);
+    foreach my $pv ($inst->get_relationship) {
+        my @args = ($id,$pv->sget_type);
+        my $link_id = $pv->get('@/id');
+        $self->factq('inst_rel',[@args,$pv->sget_to]);
+        if ($link_id) {
+            $self->factq('reification',
+                         [$link_id,{inst_rel=>[@args,$pv->sget_to]}]);
+        }
+    }
     return;
 }
 

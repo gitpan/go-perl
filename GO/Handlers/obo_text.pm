@@ -1,4 +1,4 @@
-# $Id: obo_text.pm,v 1.14 2007/08/01 16:01:59 cmungall Exp $
+# $Id: obo_text.pm,v 1.16 2008/01/22 23:54:45 cmungall Exp $
 #
 # This GO module is maintained by Chris Mungall <cjm@fruitfly.org>
 #
@@ -60,8 +60,8 @@ sub e_header {
     foreach (@sts) {
         my $scope = stag_sget($_,'scope');
         $self->tag(synonymtypedef => sprintf("%s \"%s\" %s",
-                                             stag_sget($_,NAME),
-                                             stag_sget($_,DEFSTR) || '',
+                                             stag_sget($_,ID),
+                                             stag_sget($_,NAME) || '',
                                              ($scope ? uc($scope) : '')));
     }
 
@@ -90,6 +90,15 @@ sub e_term {
         $self->e_header(stag_new(HEADER,[]));
     }
     $self->stanza('Term', $t);
+}
+
+sub e_annotation {
+    my $self = shift;
+    my $t = shift;
+    if (!$self->{__emitted_header}) {
+        $self->e_header(stag_new(HEADER,[]));
+    }
+    $self->stanza('Annotation', $t);
 }
 
 sub e_instance {
@@ -133,6 +142,7 @@ sub stanza {
        PROPERTY_VALUE,
        XREF_ANALOG,
        XREF_UNKNOWN,
+       'object',
        @BOOLEAN_TAGS,
       );
     my %IS_BOOLEAN = map { ($_=>1) } @BOOLEAN_TAGS;
@@ -206,6 +216,10 @@ sub stanza {
                 }
             }
         }
+        elsif ($tag eq 'object') {
+            # experimental: obof1.3
+            $self->tag('object' => $self->obo_id(@vals));
+        }
         elsif ($IS_BOOLEAN{$tag}) {
             $self->tag($tag, $vals[0] ? "true" : "false");
         }
@@ -233,6 +247,31 @@ sub stanza {
 
     $self->print("\n");
 
+}
+
+sub obo_id {
+    my $self = shift;
+    my $v = shift;
+    if (ref($v)) {
+        my $isect = $v->sget_intersection;
+        if ($isect) {
+            my @links = $isect->get_link;
+            my @genus = grep {!$_->get_type} @links;
+            my @diffs = grep {$_->get_type} @links;
+            my $s =
+              join('^',
+                   (map {$self->obo_id($_->sget_to)} @genus),
+                   (map {
+                       sprintf("%s(%s)",$_->sget_type,$self->obo_id($_->sget_to))
+                   } @diffs));
+            return $s;
+        }
+        else {
+        }
+    }
+    else {
+        return $v;
+    }
 }
 
 sub tag {

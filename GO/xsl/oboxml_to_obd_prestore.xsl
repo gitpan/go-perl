@@ -649,6 +649,7 @@
     </xsl:choose>
   </xsl:template>
 
+  <!-- design decision: use node_xref table? -->
   <xsl:template match="xref_analog">
     <link>
       <predicate_id>

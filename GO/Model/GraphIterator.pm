@@ -1,4 +1,4 @@
-# $Id: GraphIterator.pm,v 1.8 2006/01/12 20:25:19 cmungall Exp $
+# $Id: GraphIterator.pm,v 1.11 2008/01/22 23:54:46 cmungall Exp $
 #
 # This GO module is maintained by Chris Mungall <cjm@fruitfly.org>
 #
@@ -133,9 +133,11 @@ sub _initialize {
 sub reset_cursor {
     my $self = shift;
     my $acc = shift;
-    
+
     $self->visited({});
+
     $self->arcs_visited({});
+
     my $terms;
     if ($acc) {
         $terms = [$self->graph->get_term($acc) || confess("$acc not in graph")];
@@ -143,6 +145,9 @@ sub reset_cursor {
     else {
         if (!$self->direction || $self->direction ne "up") {
             $terms = $self->graph->get_top_nodes;
+#            foreach (@$terms) {
+#                printf "TOP: %s\n", $_->acc;
+#            }
         }
         else {
             $terms = $self->graph->get_leaf_nodes;

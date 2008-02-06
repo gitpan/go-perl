@@ -224,7 +224,16 @@
         </xsl:choose>
       </name>
 
-      <xsl:apply-templates select="namespace"/>
+      <xsl:choose>
+        <xsl:when test="namespace='unknown' and xref_analog/dbname = 'OBO_REL'">
+          <!-- do not write the namespace, as this may clash with one already assigned.
+               Note that this means OBO_REL should be loaded first
+               -->
+        </xsl:when>
+        <xsl:otherwise>
+          <xsl:apply-templates select="namespace"/>
+        </xsl:otherwise>
+      </xsl:choose>
       
       <xsl:if test="is_obsolete">
         <is_obsolete>1</is_obsolete>
@@ -288,6 +297,7 @@
         <xsl:text>No ID</xsl:text>
       </xsl:message>
     </xsl:if>
+
     <xsl:choose>
       <!-- is there a term or typedef by this ID in this file? -->
       <xsl:when test="key('k_entity',.)">
@@ -310,9 +320,12 @@
 
   </xsl:template>
 
+  <!-- turn an OBO ID into a Chado dbxref -->
   <xsl:template match="*" mode="dbxref">
     <dbxref id="dbxref__{.}">
       <xsl:choose>
+
+        <!-- simple split on bipartite ONO ID -->
         <xsl:when test="contains(.,':')">
           <db_id>
             <db>
@@ -329,13 +342,19 @@
         <!-- OBO Format has no concept of a default ID space.
              IDs that are not prefixed with a dbspace go into
              the DB 'global'.
-             In previous versions of obo2chado we made exceptions
-             for OBO_REL, since most relation stanzas (Typedefs)
-             in obo files implicitly refer to OBO_REL. However
-             this caused problems. Equivalence to OBO_REL must
+             The exception here is OBO_REL
+             Equivalence to OBO_REL must
              now be stated, otherwise an unprefixed part_of
              will be treated as _global:part_of
              -->
+
+        <xsl:when test="key('k_entity',.)/xref_analog/dbname = 'OBO_REL'">
+          <db_id>OBO_REL</db_id>
+          <accession>
+            <xsl:value-of select="."/>
+          </accession>
+        </xsl:when>
+
         <xsl:otherwise>
           <db_id>_default_idspace</db_id>
           <accession>

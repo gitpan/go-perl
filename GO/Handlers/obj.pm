@@ -1,4 +1,4 @@
-# $Id: obj.pm,v 1.23 2007/08/03 03:32:48 cmungall Exp $
+# $Id: obj.pm,v 1.24 2008/01/17 20:08:14 cmungall Exp $
 #
 # This GO module is maintained by Chris Mungall <cjm@fruitfly.org>
 #
@@ -127,6 +127,12 @@ sub e_term {
     $self->stanza('Term', $t);
 }
 
+sub e_instance {
+    my $self = shift;
+    my $t = shift;
+    $self->stanza('Instance', $t);
+}
+
 sub stanza {
     my $self = shift;
     my $stanza = lc(shift);
@@ -147,6 +153,14 @@ sub stanza {
     return $term if $term && $self->strictorder;
 
     $term = $self->apph->create_term_obj;
+
+    if ($stanza eq 'typedef') {
+        $term->is_relationship_type(1);
+    }
+    if ($stanza eq 'instance') {
+        $term->is_instance(1);
+    }
+
     my %h = ();
     foreach my $sn (stag_kids($tree)) {
         my $k = $sn->name;
@@ -158,6 +172,9 @@ sub stanza {
         }
         elsif ($k eq IS_A) {
             $self->g->add_relationship($v, $term->acc, IS_A);
+        }
+        elsif ($k eq INSTANCE_OF) {
+            $self->g->add_relationship($v, $term->acc, INSTANCE_OF);
         }
         elsif ($k eq DEF) {
             my $defstr = stag_get($sn, DEFSTR);
@@ -290,9 +307,6 @@ sub stanza {
     if (!$term->name) {
 #        warn("no name; using acc ".$term->acc);
 #        $term->name($term->acc);
-    }
-    if ($stanza eq 'typedef') {
-        $term->is_relationship_type(1);
     }
 
     $self->g->add_term($term);

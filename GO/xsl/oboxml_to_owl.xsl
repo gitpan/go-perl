@@ -26,6 +26,7 @@
   <!-- Parameters -->
   <!-- *********************************************** -->
   <xsl:param name="localid_prefix"/>
+  <xsl:param name="xmlbase_relative"/>
 
   <!-- *********************************************** -->
   <!-- XML -->
@@ -65,17 +66,34 @@
   </xsl:variable>
 
   <xsl:variable name="xmlbase">
-    <xsl:text>&oboContent;</xsl:text>
-    <!-- ontology must have unique xml base for imports
-         using the ID space seems to have problems, for example with bridging ontologies:
-         an xp ontology may have classes with idspace GO, but may be downloaded from somewhere else.
+    <xsl:choose>
+      <xsl:when test="key('k_idspace','_base')">
+        <xsl:value-of select="key('k_idspace','_base')/global"/>
+      </xsl:when>
+      <xsl:otherwise>
 
-         For now we use the file path, but there is no guarantee this is dereferenceable (use 303s?)
-         In future, consider a default-idspace tag
-         See also thread " Calling the rdf file an ontology?", july11 2007, semantic-web list
-         
-         -->
-    <xsl:value-of select="substring-before(*/source/source_path,'.')"/>
+        <xsl:text>&oboContent;</xsl:text>
+        <!-- ontology must have unique xml base for imports
+             using the ID space seems to have problems, for example with bridging ontologies:
+             an xp ontology may have classes with idspace GO, but may be downloaded from somewhere else.
+             
+             For now we use the file path, but there is no guarantee this is dereferenceable (use 303s?)
+             In future, consider a default-idspace tag
+             See also thread " Calling the rdf file an ontology?", july11 2007, semantic-web list
+             
+             -->
+        <xsl:choose>
+          <xsl:when test="$xmlbase_relative">
+            <xsl:value-of select="$xmlbase_relative"/>
+          </xsl:when>
+          <xsl:otherwise>
+            <xsl:value-of select="substring-before(*/source/source_path,'.')"/>
+          </xsl:otherwise>
+        </xsl:choose>
+        
+      </xsl:otherwise>
+      
+    </xsl:choose>
   </xsl:variable>
 
   <!-- *********************************************** -->
@@ -105,6 +123,7 @@
       <owl:AnnotationProperty rdf:about="&oboInOwl;hasDefaultNamespace"/>
       <owl:AnnotationProperty rdf:about="&oboInOwl;hasOBONamespace"/>
       <owl:AnnotationProperty rdf:about="&oboInOwl;hasDefinition"/>
+      <owl:AnnotationProperty rdf:about="&oboInOwl;hasSynonym"/>
       <owl:AnnotationProperty rdf:about="&oboInOwl;hasExactSynonym"/>
       <owl:AnnotationProperty rdf:about="&oboInOwl;hasNarrowSynonym"/>
       <owl:AnnotationProperty rdf:about="&oboInOwl;hasBroadSynonym"/>
@@ -112,6 +131,7 @@
       <owl:AnnotationProperty rdf:about="&oboInOwl;hasSynonymType"/>
       <owl:AnnotationProperty rdf:about="&oboInOwl;hasSubset"/>
       <owl:AnnotationProperty rdf:about="&oboInOwl;hasURI"/>
+      <owl:AnnotationProperty rdf:about="&oboInOwl;isCyclic"/>
       <owl:AnnotationProperty rdf:about="&oboInOwl;inSubset"/>
       <owl:AnnotationProperty rdf:about="&oboInOwl;savedBy"/>
       <owl:AnnotationProperty rdf:about="&oboInOwl;replacedBy"/>
@@ -536,13 +556,13 @@
 
   <xsl:template match="consider">
     <oboInOwl:consider>
-      <xsl:apply-templates mode="about" select="."/>
+      <xsl:apply-templates mode="resource" select="."/>
     </oboInOwl:consider>
   </xsl:template>
 
   <xsl:template match="replaced_by">
     <oboInOwl:replacedBy>
-      <xsl:apply-templates mode="about" select="."/>
+      <xsl:apply-templates mode="resource" select="."/>
     </oboInOwl:replacedBy>
   </xsl:template>
 

@@ -9,6 +9,7 @@
   <xsl:output indent="yes" method="xml"/>
 
   <xsl:param name="default_idspace"/>
+  <xsl:param name="map_intersection_of_tags"/>
 
   <xsl:key name="k_entity" match="term|typedef|instance" use="id"/>
   <xsl:key name="k_typeref" match="//type" use="."/>
@@ -61,7 +62,7 @@
         <dbxref_id>
           <dbxref>
             <db_id>internal</db_id>
-            <accession>cvterm_property_type</accession>
+            <accession>comment</accession>
           </dbxref>
         </dbxref_id>
         <cv_id>cvterm_property_type</cv_id>
@@ -88,20 +89,6 @@
         </dbxref_id>
         <cv_id>relationship</cv_id>
         <name>is_a</name>
-        <is_relationshiptype>1</is_relationshiptype>
-      </cvterm>
-
-      <!-- required for owl compatibility, and compatibility
-           with advanced features of obo 1.2 format -->
-      <cvterm op="force" id="intersection_of">
-        <dbxref_id>
-          <dbxref>
-            <db_id>internal</db_id>
-            <accession>intersection_of</accession>
-          </dbxref>
-        </dbxref_id>
-        <cv_id>cvterm_property_type</cv_id>
-        <name>intersection_of</name>
         <is_relationshiptype>1</is_relationshiptype>
       </cvterm>
 
@@ -147,12 +134,28 @@
       <xsl:comment>other relationship types</xsl:comment>
       <xsl:apply-templates select="*/term/relationship"/>
 
-      <xsl:comment>
-        intersection_of; logical definition DAG links.
-        you should only expect to find cvterm_relationships
-        under here for advanced obo1.2 and owl sourced ontologies
-      </xsl:comment>
-      <xsl:apply-templates select="*/term/intersection_of"/>
+      <xsl:if test="$map_intersection_of_tags='true'">
+        <xsl:comment>
+          intersection_of; logical definition DAG links.
+          you should only expect to find cvterm_relationships
+          under here for advanced obo1.2 and owl sourced ontologies
+        </xsl:comment>
+        <!-- required for owl compatibility, and compatibility
+             with advanced features of obo 1.2 format -->
+        <cvterm op="force" id="intersection_of">
+          <dbxref_id>
+            <dbxref>
+              <db_id>internal</db_id>
+              <accession>intersection_of</accession>
+            </dbxref>
+          </dbxref_id>
+          <cv_id>cvterm_property_type</cv_id>
+          <name>intersection_of</name>
+          <is_relationshiptype>1</is_relationshiptype>
+        </cvterm>
+        
+        <xsl:apply-templates select="*/term/intersection_of"/>
+      </xsl:if>
 
       <xsl:comment>is_a relationship types between typedefs</xsl:comment>
       <xsl:apply-templates select="*/typedef/is_a"/>
@@ -225,10 +228,10 @@
       </name>
 
       <xsl:choose>
-        <xsl:when test="namespace='unknown' and xref_analog/dbname = 'OBO_REL'">
-          <!-- do not write the namespace, as this may clash with one already assigned.
-               Note that this means OBO_REL should be loaded first
+        <xsl:when test="xref_analog/dbname = 'OBO_REL'">
+          <!-- do not write the specified namespace: we map the relation to the equivalent in OBO_REL
                -->
+          <cv_id>relationship</cv_id>
         </xsl:when>
         <xsl:otherwise>
           <xsl:apply-templates select="namespace"/>

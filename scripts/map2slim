@@ -26,6 +26,7 @@ GetOptions($opt,
            "force",
 	   "ontdir=s",
            "outmap=s",
+           "shownames",
            "cache=s",
            "inmap=s",
            "gff",
@@ -144,8 +145,15 @@ if ($opt->{outmap}) {
     foreach my $t (sort {$a->acc cmp $b->acc} @$terms) {
 	my $acc = $t->acc;
 	my ($leaf_pnodes, $all_pnodes) = mapslim($acc);
-	print $outmap 
-	  "$acc => @$leaf_pnodes // @$all_pnodes\n";
+        if ($opt->{shownames}) {
+            printf $outmap "%s => %s // %s\n",
+              fmt_acc_names($acc),
+                fmt_acc_names(@$leaf_pnodes),
+                  fmt_acc_names(@$all_pnodes),
+        }
+        else {
+            print $outmap "$acc => @$leaf_pnodes // @$all_pnodes\n";
+        }
     }
     $outmap->close;
     exit 0;
@@ -401,6 +409,18 @@ sub mapslim {
     return @$memo;
 }
 
+sub fmt_acc_names {
+    my @accs = @_;
+    return join(' ',
+                map {
+                    my $t = $ont->get_term($_);
+                    if (!$t) {
+                        $t = $gslim->get_term($_);
+                    }
+                    sprintf('%s "%s"',$_,$t ? $t->name : '?');
+                } @accs);
+}
+
 __END__
 
 =head1 NAME
@@ -444,6 +464,12 @@ This will generate a mapping file for every term in the full ontology
 showing both the most pertinent slim term and all slim terms that are
 ancestors. If you use this option, do NOT supply a gene-associations
 file
+
+=item shownames
+
+(Only works with -outmap)
+
+Show the names of the term in the slim mapping file
 
 =item -c
 

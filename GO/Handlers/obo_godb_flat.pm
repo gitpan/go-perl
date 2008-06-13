@@ -1,4 +1,4 @@
-# $Id: obo_godb_flat.pm,v 1.5 2007/12/27 00:19:28 benhitz Exp $
+# $Id: obo_godb_flat.pm,v 1.6 2008/03/12 20:50:55 benhitz Exp $
 #
 # This GO module is maintained by Chris Mungall <cjm@fruitfly.org>
 #
@@ -46,14 +46,14 @@ sub init {
     $self->SUPER::init();
 
     $self->{tables} = {
-	dbxref       => [ qw(id xref_key xref_keytype xref_dbname xref_desc) ], # must append many dbxrefs
+	dbxref       => [ qw(id xref_dbname xref_key xref_keytype xref_desc) ], # must append many dbxrefs
 	term         => [ qw(id name term_type acc is_obsolete is_root) ], # must append SO terms, qualifiers
 	gene_product => [ qw(id symbol dbxref_id species_id  type_id full_name) ],
 	association  => [ qw(id term_id gene_product_id is_not role_group assocdate source_db_id) ],
 	db           => [ qw(id name fullname datatype generic_url url_syntax) ], # last 4 all null in current load
 	evidence     => [ qw(id code association_id dbxref_id seq_acc) ],
 	association_qualifier => [ qw(id association_id term_id value) ], # must append 
-	species               => [ qw(id ncbi_taxa_id common_name lineage_string genus species) ],
+	species               => [ qw(id ncbi_taxa_id common_name lineage_string genus species parent_id left_value right_value taxonomic_rank) ],
 	# linking tables
 	gene_product_synonym => [ qw(gene_product_id product_synonym)],
 	evidence_dbxref      => [ qw(evidence_id dbxref_id) ]
@@ -251,9 +251,9 @@ sub get_dbxref_id {
 
     $self->dump_table('dbxref', [
 				 ++$self->{pk}{dbxref},
+				 $dbname,
 				 $key,
 				 '\N',
-				 $dbname,
 				 '\N',
 				 ]);
 
@@ -341,6 +341,10 @@ sub get_taxon_id {
 				  '\N',  # lineage unknown
 				  '\N',  # genuss unknown
 				  '\N',  # species unknown
+				  '\N',  # parent_id unknown
+				  '\N',  # left  unknown
+				  '\N',  # right  unknown
+				  '\N',  # taxonomic rank  unknown
 				  ]);
 
     $self->file($oldfile); # set file name back;

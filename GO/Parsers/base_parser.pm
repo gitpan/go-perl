@@ -1,4 +1,4 @@
-# $Id: base_parser.pm,v 1.17 2008/01/07 00:27:18 cmungall Exp $
+# $Id: base_parser.pm,v 1.18 2008/03/13 05:16:40 cmungall Exp $
 #
 #
 # see also - http://www.geneontology.org
@@ -253,6 +253,9 @@ sub parse {
 
     my $dtype = $self->dtype;
     foreach my $file (@files) {
+
+        $file = $self->download_file_if_required($file);
+
         $self->file($file);
         #printf STDERR "parsing: $file %d\n", $self->use_cache;
 
@@ -426,6 +429,19 @@ sub _make_temp_filename {
     my ($base, $suffix) = @_;
     $base =~ s/.*\///;
     return "TMP.$$.$base$suffix";
+}
+
+sub download_file_if_required {
+    my $self = shift;
+    my $f = shift;
+    if ($f =~ /^http:/) {
+        my $tmpf = _make_temp_filename($f,'.obo');
+        system("wget -O $tmpf $f");
+        return $tmpf;
+    }
+    else {
+        return $f;
+    }
 }
 
 =head2 litemode

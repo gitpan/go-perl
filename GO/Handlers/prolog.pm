@@ -110,7 +110,7 @@ sub e_term {
     my $name_h = $self->{name_h};
     my $name = $term->get_name;
     #$name =~ s/_/ /g;   # ontologies lack consistency; force use of spc
-    my $ont = $term->get_namespace || 'unknown';
+    my $ont = $term->get_namespace;
 
     if ($name) {
         # cache the name; useful for use in comment fields later
@@ -244,9 +244,6 @@ sub export_tags {
         my $xref = _flatten_dbxref($_);
         #$self->factq('class_xref',[$id, sprintf("%s:%s",$_->sget_dbname,$_->sget_acc)]);
         $self->factq('metadata_db:entity_xref',[$id, $xref]);
-        if ($_->get_name) {
-            $self->factq('metadata_db:entity_label',[$xref, $_->get_name]);
-        }
     }
     #foreach ($entity->get_subset) {
     #    $self->fact('belongs_subset',$_->findval_scope || '',$_->sget_synonym_text);
@@ -370,7 +367,7 @@ sub e_annotation {
 
     my $idh = $self->nextid_by_prod;
 
-    my $proddb = $annotation->sget_namespace || 'unknown';
+    my $proddb = $annotation->sget_namespace || '_';
     my $subj = $annotation->sget_subject;
     my $rel = $annotation->sget_relation;
     my $obj = $annotation->sget_object;

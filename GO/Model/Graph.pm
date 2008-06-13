@@ -1,4 +1,4 @@
-# $Id: Graph.pm,v 1.24 2007/09/12 03:07:30 cmungall Exp $
+# $Id: Graph.pm,v 1.25 2008/03/27 01:48:43 cmungall Exp $
 #
 # This GO module is maintained by Chris Mungall <cjm@fruitfly.org>
 #
@@ -2170,7 +2170,7 @@ sub add_relationship {
     $rel->acc1 || confess($rel);
     $rel->acc2 || confess($rel);
 
-    if ($rel->complete) {
+    if (0 && $rel->complete) {
         # EXPERIMENTAL:
         #  an OWL/DL style logical definition (N+S conditions) is stored in the DAG as
         #  normal Relationships but with the 'completes' tag set to true

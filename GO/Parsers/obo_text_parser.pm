@@ -1,4 +1,4 @@
-# $Id: obo_text_parser.pm,v 1.43 2008/02/05 00:34:15 cmungall Exp $
+# $Id: obo_text_parser.pm,v 1.46 2008/04/14 05:41:43 cmungall Exp $
 #
 #
 # see also - http://www.geneontology.org
@@ -39,12 +39,23 @@ sub dtd {
 
 sub parse_fh {
     my ($self, $fh) = @_;
+
+    $self->start_event(OBO);
+    $self->parse_fh_inner($fh);
+
+    $self->pop_stack_to_depth(0);
+    $self->parsed_ontology(1);
+
+}
+
+sub parse_fh_inner {
+
+    my ($self, $fh) = @_;
     my $file = $self->file;
     my $litemode = $self->litemode;
     my $is_go;
     local($_);    # latest perl is more strict about modification of $_
 
-    $self->start_event(OBO);
     $self->fire_source_event($file);
     $self->start_event(HEADER);
     my $stanza_count;
@@ -56,6 +67,7 @@ sub parse_fh {
     my $force_namespace = $self->force_namespace;
     my $usc = $self->replace_underscore;
     my %id_remap_h = ();
+    my @imports = ();
 
     # temporary hack...
     if ($ENV{OBO_IDMAP}) {
@@ -181,6 +193,14 @@ sub parse_fh {
                         $self->parse_err("id-mapping requires two columns");
                     }
                 }
+                if ($tag eq 'import') {
+                    if ($ENV{OBO_FOLLOW_IMPORTS}) {
+                        push(@imports, $val);
+                    }
+                    else {
+                        $self->event(import=>$val);
+                    }
+                }
 
                 $self->event($tag=>$val);
 
@@ -260,6 +280,11 @@ sub parse_fh {
                 }
 	    }
 	    elsif ($tag eq INVERSE_OF || $tag eq TRANSITIVE_OVER) {
+                if ($id_remap_h{$val}) {
+                    $val = $id_remap_h{$val};
+                }
+	    }
+	    elsif ($tag eq DISJOINT_FROM) {
                 if ($id_remap_h{$val}) {
                     $val = $id_remap_h{$val};
                 }
@@ -439,8 +464,18 @@ sub parse_fh {
         }
     }
     $self->event(IS_ROOT,1) if $is_root;
-    $self->pop_stack_to_depth(0);
-    $self->parsed_ontology(1);
+
+    foreach my $import_file (@imports) {
+        $import_file = $self->download_file_if_required($import_file);
+        $self->file($import_file);
+        $self->pop_stack_to_depth(1);
+        #$self->end_event(HEADER);
+        my $ifh = FileHandle->new($import_file);
+        $self->parse_fh_inner($ifh);
+        #$self->pop_stack_to_depth(1);
+        $ifh->close();
+    }
+
     return;
 }
 

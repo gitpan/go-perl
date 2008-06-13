@@ -36,7 +36,7 @@ if ($@) {
 # ------------------------
 
 
-my $f = './t/data/llm.obo';
+my $f = './t/data/llm2.obo';
 my $parser = new GO::Parser ({format=>'obo'
                              });
 #                              handler=>'xml'});
@@ -59,7 +59,7 @@ $cv_h{$_->sget('@/id')} = $_->sget('name') foreach $chado->get_cv;
 ok(1);
 
 # explicitly listed relation, declared to be in relationship
-my $cv_id = $relh{'OBO_REL:part_of'}->sget('cv_id');
+my $cv_id = $relh{'part_of'}->sget('cv_id');
 ok($cv_h{$cv_id} eq 'relationship');
 
 # only mentioned in header - not listed so we presume loaded
@@ -69,8 +69,8 @@ ok(!$relh{'OBOL:during'}->sget('cv_id'));
 ok($cv_h{$relh{bzz}->sget_cv_id} eq 'gene_ontology');
 ok($relh{bzz}->sget('dbxref_id/dbxref/db_id') eq '_default_idspace');
 
-ok($cv_h{$relh{foo}->sget_cv_id} eq 'gene_ontology');
-ok($relh{foo}->sget('dbxref_id/dbxref/db_id') eq '_default_idspace');
+ok($cv_h{$relh{foo}->sget_cv_id} eq 'relationship');
+ok($relh{foo}->sget('dbxref_id/dbxref/db_id') eq 'OBO_REL');
 
 # genuine ID and no namespace explicitly provided, use default
 ok($cv_h{$relh{'X:Y'}->sget('cv_id')} eq 'gene_ontology');

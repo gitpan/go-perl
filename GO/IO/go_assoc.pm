@@ -1,4 +1,4 @@
-# $Id: go_assoc.pm,v 1.5 2007/06/12 01:26:54 sjcarbon Exp $
+# $Id: go_assoc.pm,v 1.6 2008/06/02 22:00:44 sjcarbon Exp $
 #
 # This GO module is maintained by Seth Carbon <sjcarbon@berkeleybop.org>
 #
@@ -314,14 +314,16 @@ sub write_term{
 
       ## 15  Assigned_by  association.source_db_id x db.name
       ## TODO/NOTE: Hidden API.
-      push @output, $assoc->assigned_by;
+      push @output, $assoc->assigned_by || '';
 
       push @output, "\n";
     }
   }
 
-  my $fh = $self->{OUT};
-  print $fh join '', @output;
+  my $fh = $self->{OUT} || undef;
+  if( defined($fh) && scalar(@output) > 0 ){
+    print $fh join '', @output;
+  }
 }
 
 

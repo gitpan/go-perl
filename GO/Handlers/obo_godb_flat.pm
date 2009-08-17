@@ -1,4 +1,4 @@
-# $Id: obo_godb_flat.pm,v 1.6 2008/03/12 20:50:55 benhitz Exp $
+# $Id: obo_godb_flat.pm,v 1.13 2008/10/30 17:50:55 benhitz Exp $
 #
 # This GO module is maintained by Chris Mungall <cjm@fruitfly.org>
 #
@@ -47,16 +47,17 @@ sub init {
 
     $self->{tables} = {
 	dbxref       => [ qw(id xref_dbname xref_key xref_keytype xref_desc) ], # must append many dbxrefs
-	term         => [ qw(id name term_type acc is_obsolete is_root) ], # must append SO terms, qualifiers
+	term         => [ qw(id name term_type acc is_obsolete is_root is_relation) ], # must append SO terms, qualifiers
 	gene_product => [ qw(id symbol dbxref_id species_id  type_id full_name) ],
 	association  => [ qw(id term_id gene_product_id is_not role_group assocdate source_db_id) ],
-	db           => [ qw(id name fullname datatype generic_url url_syntax) ], # last 4 all null in current load
+	db           => [ qw(id name fullname datatype generic_url url_syntax url_example uri_prefix) ], # last 4 all null in current load
 	evidence     => [ qw(id code association_id dbxref_id seq_acc) ],
 	association_qualifier => [ qw(id association_id term_id value) ], # must append 
 	species               => [ qw(id ncbi_taxa_id common_name lineage_string genus species parent_id left_value right_value taxonomic_rank) ],
 	# linking tables
 	gene_product_synonym => [ qw(gene_product_id product_synonym)],
-	evidence_dbxref      => [ qw(evidence_id dbxref_id) ]
+	evidence_dbxref      => [ qw(evidence_id dbxref_id) ],
+	association_species_qualifier => [ qw(id association_id species_id) ],
 	};
     
     $self->{fhs}  = { map (("$_.txt" => 0), keys %{$self->{tables}}) };
@@ -135,6 +136,17 @@ sub e_prod {
 							]);
 
 	}
+
+	# get species qualifier for dual taxon species
+	for my $species_qual ($assoc->get_species_qualifier) {
+	    $self->dump_table('association_species_qualifier', [
+							++$self->{pk}{association_species_qualifier},
+							$self->{pk}{association},
+							$self->get_taxon_id($species_qual),
+							]);
+
+	}
+
 	# now evidence and evidence dbxref
 	for my $ev ($assoc->get_evidence) {
 	    
@@ -180,7 +192,7 @@ sub add_gene_product {
 
     my $acc = $prod->get_prodacc;
 
-    if ($self->apph->dbxref2gpid_h->{$proddb}->{$acc}) {
+    if ($self->apph->dbxref2gpid_h->{uc($proddb)}->{uc($acc)}) {
     # check to see if we've already added it
     # unique key for gene product is actually dbxref_id, but need the gp_id
     } else {
@@ -192,27 +204,27 @@ sub add_gene_product {
 					   ++$self->{pk}{gene_product},
 					   $prod->sget_prodsymbol,
 					   $self->get_dbxref_id($proddb, $acc),
-					   $self->get_taxon_id($prod->sget_prodtaxa),
+					   $self->get_taxon_id($prod->get_prodtaxa),
 #					   '\N', # currently no secondary species ids
 					   $self->get_term_id($prod->get_prodtype, 'sequence'),
 					   $prod->sget_prodname || "", # that should be full name.
 					   ]);
 
-	$self->apph->dbxref2gpid_h->{$proddb}->{$acc} = $self->{pk}{gene_product};
+	$self->apph->dbxref2gpid_h->{uc($proddb)}->{uc($acc)} = $self->{pk}{gene_product};
 
-    }
+	# add synoyms if necessary
 
-    # add synoyms if necessary
-
-    for my $syn ($prod->get_prodsyn) {
+	for my $syn ($prod->get_prodsyn) {
 	
-	$self->dump_table('gene_product_synonym', [
-						   $self->{pk}{gene_product}, 
-						   $syn,
-						   ]);
+	    $self->dump_table('gene_product_synonym', [
+						       $self->{pk}{gene_product}, 
+						       $syn,
+						       ]);
+	}
+
     }
 
-    return $self->apph->dbxref2gpid_h->{$proddb}->{$acc};
+    return $self->apph->dbxref2gpid_h->{uc($proddb)}->{uc($acc)};
     
 }
 
@@ -244,7 +256,7 @@ sub get_dbxref_id {
 
     # mysql will handle case-insensitivity, but perl keeps seperate
 
-    return $self->apph->dbxref2id_h->{$ucDb}->{uc($ucKey)} if $self->apph->dbxref2id_h->{$ucDb}->{$ucKey};
+    return $self->apph->dbxref2id_h->{$ucDb}->{$ucKey} if $self->apph->dbxref2id_h->{$ucDb}->{$ucKey};
 
     # doesn't exist, add it to dbxref file and hash
     my $oldfile = $self->file;
@@ -288,8 +300,9 @@ sub get_term_id {
 			       $term,
 			       $termType,
 			       $acc,
-			       0,    # never is_obsolete
+			       0,  # never is_obsolete
 			       0,  # never is_root
+                               0,  # never a relationship type
 			       ]);
 
     $self->file($oldfile); # set file name back;
@@ -304,7 +317,7 @@ sub get_sourcedb_id {
     my $self = shift;
     my $db = shift;
  
-    return $self->apph->source2id_h->{$db} if $self->apph->source2id_h->{$db};
+    return $self->apph->source2id_h->{uc($db)} if $self->apph->source2id_h->{uc($db)};
 
     # doesn't exist, add it to file and hash
     my $oldfile = $self->file;
@@ -315,19 +328,21 @@ sub get_sourcedb_id {
 			     '\N',
 			     '\N',
 			     '\N',   
-			     '\N',  # last 4 columns always null
+			     '\N',  
+			     '\N',  
+			     '\N',  
 			     ]);
 
     $self->file($oldfile); # set file name back
 
-    $self->apph->source2id_h->{$db} = $self->{pk}{db};  # return the id
+    $self->apph->source2id_h->{uc($db)} = $self->{pk}{db};  # return the id
 
 
 }
 sub get_taxon_id {
 
     my $self = shift;
-    my $taxonId = shift;
+    my $taxonId = shift || '';
     
     return $self->apph->taxon2id_h->{$taxonId} if $self->apph->taxon2id_h->{$taxonId};
     warn "Could not find id in db for taxon $taxonId, adding\n";
@@ -351,8 +366,7 @@ sub get_taxon_id {
 
     $self->apph->taxon2id_h->{$taxonId} = $self->{pk}{species};  # return the id
 
-}
-
+}    
 
 sub file {
 # overrides Data::Stag::Writer file
@@ -375,7 +389,7 @@ sub file {
 	$self->{_fh} = undef;
     }
 
-    unless  ( $fh->{$self->{_file}} ) {
+    if  ( !$self->{_file} || !$fh->{$self->{_file}} ) {
 
 #	print STDERR "opening file $self->{_file}...\n";
 	$fh->{$self->{_file}} = $self->safe_fh;

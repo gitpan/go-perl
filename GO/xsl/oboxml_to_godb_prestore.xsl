@@ -31,6 +31,11 @@
         <map>term1/term2term.term1_id=term.id</map>
         <map>term2/term2term.term2_id=term.id</map>
         <map>type/term2term.relationship_type_id=term.id</map>
+
+        <map>relation1/relation_composition.relation1_id=term.id</map>
+        <map>relation2/relation_composition.relation2_id=term.id</map>
+        <map>inferred_relation/relation_composition.inferred_relation_id=term.id</map>
+
         <map>term1/term2term_metadata.term1_id=term.id</map>
         <map>term2/term2term_metadata.term2_id=term.id</map>
         <map>type/term2term_metadata.relationship_type_id=term.id</map>
@@ -44,6 +49,7 @@
       </dbstag_metadata>
       <xsl:apply-templates select="*/source"/>
 
+      <!--
       <term>
         <acc>all</acc>
         <name>all</name>
@@ -55,6 +61,8 @@
           </term_definition>
         </term_definition>
       </term>
+      -->
+
       <term>
         <acc>is_a</acc>
         <name>is_a</name>
@@ -64,15 +72,41 @@
             inheritance relationship
           </term_definition>
         </term_definition>
+        <is_relation>1</is_relation>
       </term>
+      <term>
+        <acc>consider</acc>
+        <name>consider</name>
+        <term_type>metadata</term_type>
+        <is_relation>1</is_relation>
+      </term>
+      <term>
+        <acc>replaced_by</acc>
+        <name>replaced_by</name>
+        <term_type>metadata</term_type>
+        <is_relation>1</is_relation>
+      </term>
+      <relation_properties>
+        <relationship_type_id>
+          <term>
+            <acc>is_a</acc>
+          </term>
+        </relationship_type_id>
+        <is_transitive>1</is_transitive>
+        <is_reflexive>1</is_reflexive>
+        <is_anti_symmetric>1</is_anti_symmetric>
+      </relation_properties>
 
       <xsl:apply-templates select="*/header/subsetdef"/>
 
       <!-- load relationships before terms -->
       <xsl:apply-templates select="*/typedef"/>
+      <xsl:apply-templates select="*/typedef" mode="relation_properties"/>
       <xsl:apply-templates select="*/term"/>
       <xsl:apply-templates select="*/term/is_a"/>
       <xsl:apply-templates select="*/typedef/is_a"/>
+      <xsl:apply-templates select="*/typedef/holds_over_chain"/>
+      <xsl:apply-templates select="*/typedef/transitive_over"/>
       <xsl:apply-templates select="*/term/relationship"/>
       <xsl:apply-templates select="*/term/intersection_of"/>
       <xsl:apply-templates select="assocs/dbset/prod"/>
@@ -188,7 +222,25 @@
       <xsl:apply-templates select="synonym"/>
       <xsl:apply-templates select="alt_id"/>
       <xsl:apply-templates select="xref_analog|xref"/>
+      <is_relation>1</is_relation>
     </term>
+  </xsl:template>
+
+  <xsl:template match="typedef" mode="relation_properties">
+    <relation_properties>
+      <relationship_type_id>
+        <term>
+          <acc>
+            <xsl:value-of select="id"/>
+          </acc>
+        </term>
+      </relationship_type_id>
+      <xsl:for-each select="(is_transitive|is_symmetric|is_anti_symmetric|is_cyclic|is_reflexive|is_metadata_tag)">
+        <xsl:element name="{name(.)}">
+          <xsl:value-of select="."/>
+        </xsl:element>
+        </xsl:for-each>
+    </relation_properties>
   </xsl:template>
 
   <xsl:template match="*" mode="dbxref">
@@ -262,6 +314,66 @@
         <completes>1</completes>
       </xsl:if>
     </term2term>
+  </xsl:template>
+
+  <!-- see http://wiki.geneontology.org/index.php/Relation_composition -->
+  <xsl:template match="holds_over_chain">
+    <xsl:comment>
+      <xsl:text>Requires relation_composition table, added to DDL 2008/10/27</xsl:text>
+    </xsl:comment>
+    <relation_composition>
+      <inferred_relation>
+        <term>
+          <acc>
+            <xsl:value-of select="../id"/>
+          </acc>
+        </term>
+      </inferred_relation>
+      <relation1>
+        <term>
+          <acc>
+            <xsl:value-of select="relation[1]"/>
+          </acc>
+        </term>
+      </relation1>
+      <relation2>
+        <term>
+          <acc>
+            <xsl:value-of select="relation[2]"/>
+          </acc>
+        </term>
+      </relation2>
+    </relation_composition>
+  </xsl:template>
+
+  <!-- see http://wiki.geneontology.org/index.php/Relation_composition -->
+  <xsl:template match="transitive_over">
+    <xsl:comment>
+      <xsl:text>translating transitive_over meta-property to relation_composition. P transitive_over Q is the same as P.Q->P </xsl:text>
+    </xsl:comment>
+    <relation_composition>
+      <inferred_relation>
+        <term>
+          <acc>
+            <xsl:value-of select="../id"/>
+          </acc>
+        </term>
+      </inferred_relation>
+      <relation1>
+        <term>
+          <acc>
+            <xsl:value-of select="../id"/>
+          </acc>
+        </term>
+      </relation1>
+      <relation2>
+        <term>
+          <acc>
+            <xsl:value-of select="."/>
+          </acc>
+        </term>
+      </relation2>
+    </relation_composition>
   </xsl:template>
 
   <!-- see obo1.2 docs for more info on this tag -->
@@ -635,94 +747,6 @@
     </db>
   </xsl:template>
 
-  <!-- homology data (EXPERIMENTAL) - comes from reference genomes -->
-  <xsl:template match="homologset">
-    <!-- we create a term for the disease/homology set/human gene -->
-    <term>
-      <acc>
-        <xsl:value-of select="@id"/>
-      </acc>
-      <name>
-        <xsl:value-of select="tagval[@type='HS_gene_symbol']"/>
-      </name>
-      <term_type>
-        <xsl:text>reference_genome</xsl:text>
-      </term_type>
-      <term_definition>
-        <term_definition>
-          <xsl:value-of select="tagval[@type='OMIM_Disease_name']"/>
-        </term_definition>
-      </term_definition>
-
-      <term2term>
-        <type>
-          <term>
-            <acc>is_a</acc>
-          </term>
-        </type>
-        <term1>
-          <term>
-            <name>
-              <xsl:text>collection of homologous genes</xsl:text>
-            </name>
-            <acc>
-              <xsl:text>REFGENOMES:1</xsl:text>
-            </acc>
-            <term_type>
-              <xsl:text>reference_genomes</xsl:text>
-            </term_type>
-          </term>
-        </term1>
-      </term2term>
-    </term>
-    <xsl:for-each select="member">
-      <gene_product>
-        <dbxref>
-          <xref_dbname>
-            <xsl:value-of select="substring-before(@ref,':')"/>
-          </xref_dbname>
-          <xref_key>
-            <xsl:value-of select="substring-after(@ref,':')"/>
-          </xref_key>
-        </dbxref>
-        <association>
-          <term>
-            <acc>
-              <xsl:value-of select="../@id"/>
-            </acc>
-          </term>
-          <source_db>
-            <db>
-              <name>
-                <xsl:text>reference_genomes</xsl:text>
-              </name>
-            </db>
-          </source_db>
-          <association_qualifier>
-            <term>
-              <acc>
-                <xsl:text>oban:evolutionary_ancestory_of</xsl:text>
-              </acc>
-              <name>evolutionary ancestor of</name>
-              <term_type>relation</term_type>
-            </term>
-          </association_qualifier>
-          <evidence>
-            <code>
-              <xsl:text>TAS</xsl:text>
-            </code>
-            <seq_acc>
-              <xsl:text>TEST</xsl:text>
-            </seq_acc>
-            <dbxref>
-              <xref_dbname>test</xref_dbname>
-              <xref_key>1234</xref_key>
-            </dbxref>
-          </evidence>
-        </association>
-      </gene_product>
-    </xsl:for-each>
-  </xsl:template>
 
   <xsl:template match="text()|@*">
   </xsl:template>

@@ -1,12 +1,23 @@
-# http://module-build.sourceforge.net/META-spec.html
-#XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
-name:         go-perl
-version:      0.09
-version_from: go-perl.pod
-installdirs:  site
+--- #YAML:1.0
+name:               go-perl
+version:            0.10
+abstract:           GO Perl
+author:
+    - Chris Mungall <cjm@fruitfly.org>
+license:            unknown
+distribution_type:  module
+configure_requires:
+    ExtUtils::MakeMaker:  0
+build_requires:
+    ExtUtils::MakeMaker:  0
 requires:
-    Data::Dumper:                  0
-    Data::Stag:                    0.07
-
-distribution_type: module
-generated_by: ExtUtils::MakeMaker version 6.17
+    Data::Dumper:  0
+    Data::Stag:    0.07
+no_index:
+    directory:
+        - t
+        - inc
+generated_by:       ExtUtils::MakeMaker version 6.50
+meta-spec:
+    url:      http://module-build.sourceforge.net/META-spec-v1.4.html
+    version:  1.4

@@ -1,4 +1,4 @@
-# $Id: obo_text_parser.pm,v 1.46 2008/04/14 05:41:43 cmungall Exp $
+# $Id: obo_text_parser.pm,v 1.50 2009/08/12 20:58:25 cmungall Exp $
 #
 #
 # see also - http://www.geneontology.org
@@ -69,6 +69,8 @@ sub parse_fh_inner {
     my %id_remap_h = ();
     my @imports = ();
 
+    my $is_utf8;
+
     # temporary hack...
     if ($ENV{OBO_IDMAP}) {
         my @parts = split(/\;/,$ENV{OBO_IDMAP});
@@ -84,16 +86,21 @@ sub parse_fh_inner {
     while(<$fh>) {
 	chomp;
 
+        if (/^encoding:\s*utf/) {
+            $is_utf8 = 1;
+        }
 
-        tr [\200-\377]
-          [\000-\177];   # see 'man perlop', section on tr/
-        # weird ascii characters should be excluded
-        tr/\0-\10//d;   # remove weird characters; ascii 0-8
-                        # preserve \11 (9 - tab) and \12 (10-linefeed)
-        tr/\13\14//d;   # remove weird characters; 11,12
-                        # preserve \15 (13 - carriage return)
-        tr/\16-\37//d;  # remove 14-31 (all rest before space)
-        tr/\177//d;     # remove DEL character
+        if (!$is_utf8) {
+            tr [\200-\377]
+                [\000-\177];   # see 'man perlop', section on tr/
+            # weird ascii characters should be excluded
+            tr/\0-\10//d;   # remove weird characters; ascii 0-8
+            # preserve \11 (9 - tab) and \12 (10-linefeed)
+            tr/\13\14//d;   # remove weird characters; 11,12
+            # preserve \15 (13 - carriage return)
+            tr/\16-\37//d;  # remove 14-31 (all rest before space)
+            tr/\177//d;     # remove DEL character
+        }
 
         s/^\!.*//;
         s/[^\\]\!.*//;
@@ -198,7 +205,8 @@ sub parse_fh_inner {
                         push(@imports, $val);
                     }
                     else {
-                        $self->event(import=>$val);
+                        # handled below
+                        #$self->event(import=>$val);
                     }
                 }
 
@@ -255,7 +263,8 @@ sub parse_fh_inner {
                 }
             }
 	    elsif ($tag eq RELATIONSHIP) {
-		my ($type, $id) = split(' ', $val2);
+		my ($type, @ids) = split(' ', $val2);
+		my $id = shift @ids;
                 if ($id_remap_h{$type}) {
                     $type = $id_remap_h{$type};
                 }
@@ -265,11 +274,17 @@ sub parse_fh_inner {
                     }
                 }
 		$val = [[TYPE,$type],[TO,$id]];
+		push(@$val,map {['additional_argument',$_]} @ids);
 	    }
 	    elsif ($tag eq INTERSECTION_OF || $tag eq UNION_OF) {
 		my ($type, $id) = split(' ', $val2);
                 if ($id_remap_h{$type}) {
                     $type = $id_remap_h{$type};
+                }
+                if ($type !~ /:/) {
+                    if ($default_id_prefix) {
+                        $type = "$default_id_prefix:$type";
+                    }
                 }
 		if ($id) {
                     $val = [[TYPE,$type],[TO,$id]];
@@ -279,14 +294,24 @@ sub parse_fh_inner {
                     $val = [[TO,$id]];
                 }
 	    }
-	    elsif ($tag eq INVERSE_OF || $tag eq TRANSITIVE_OVER) {
+	    elsif ($tag eq INVERSE_OF || $tag eq TRANSITIVE_OVER || $tag eq IS_A) {
                 if ($id_remap_h{$val}) {
                     $val = $id_remap_h{$val};
+                }
+                if ($val !~ /:/) {
+                    if ($default_id_prefix) {
+                        $val = "$default_id_prefix:$val";
+                    }
                 }
 	    }
 	    elsif ($tag eq DISJOINT_FROM) {
                 if ($id_remap_h{$val}) {
                     $val = $id_remap_h{$val};
+                }
+                if ($val !~ /:/) {
+                    if ($default_id_prefix) {
+                        $val = "$default_id_prefix:$val";
+                    }
                 }
 	    }
 	    elsif ($tag eq XREF) {
@@ -378,6 +403,19 @@ sub parse_fh_inner {
 		  [[SYNONYM_TEXT,$syn],
 		   (map {dbxref($_)} @$parts)];
 	    }
+	    elsif ($tag =~ /formula/) {
+		my ($formula, $parts, $extra_quals) =
+		  extract_qstr($val2);
+                my $lang = 'CLIF';
+                if (@$extra_quals) {
+                    $lang = shift @$extra_quals;
+                }
+                $qh->{format} = $lang;
+            
+		$val =
+		  [['formula_text',$formula],
+		   (map {dbxref($_)} @$parts)];
+	    }
 	    elsif ($tag eq 'holds_temporally_between' ||    # experimental support for obof1.3
                    $tag eq 'holds_atemporally_between' ||
                    $tag eq 'holds_on_class_level_between') {
@@ -390,16 +428,19 @@ sub parse_fh_inner {
                 }
 		$val = [[subject=>$sub],[object=>$ob]];
 	    }
-	    elsif ($tag eq 'holds_over_chain') {    # experimental support for obof1.3
-		my @rels = split(/\s*\*\s*/, $val2);
-
+	    elsif ($tag eq 'holds_over_chain' || $tag eq 'equivalent_to_chain') {    # obof1.3
+		my @rels = split(' ', $val2);
                 @rels = map {                 
+                    my $rel = $_;
                     if ($id_remap_h{$_}) { 
-                        $id_remap_h{$_}
+                        $rel = $id_remap_h{$_}
                     }
-                    else {
-                        $_;
+                    if ($rel !~ /:/) {
+                        if ($default_id_prefix) {
+                            $rel = "$default_id_prefix:$rel";
+                        }
                     }
+                    $rel;
                 } @rels;
 		$val = [map {[relation=>$_]} @rels];
 	    }
@@ -431,6 +472,7 @@ sub parse_fh_inner {
             else {
                 $self->event($tag=>$val);
             }
+
             if ($tag eq IS_A || $tag eq RELATIONSHIP) {
                 $is_root = 0;
             }
@@ -580,7 +622,7 @@ sub dbxref {
     if ($db eq 'http' && $acc =~ /^\/\//) {
         # dbxref is actually a URI
         $db = 'URL';
-        $acc =~ simple_escape($acc);
+        $acc = simple_escape($acc);
         $acc =~ s/\s/\%20/g;
         $acc = "http:$acc";
     }

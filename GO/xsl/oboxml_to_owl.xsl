@@ -2,10 +2,13 @@
 <!DOCTYPE stylesheet [
   <!ENTITY oboInOwl "http://www.geneontology.org/formats/oboInOwl#">
   <!ENTITY oboContent "http://purl.org/obo/owl/">
+  <!ENTITY obo "http://purl.org/obo/owl/obo#">
   <!ENTITY oban "http://purl.org/obo/oban/">
   <!ENTITY xref "http://purl.org/obo/owl/">
   <!ENTITY xsd "http://www.w3.org/2001/XMLSchema#">
   <!ENTITY owl "http://www.w3.org/2002/07/owl#">
+  <!ENTITY owl11 "http://www.w3.org/2006/12/owl11#onClass">
+  <!ENTITY owl2 "http://www.w3.org/2006/12/owl2#onClass">
   ]>
 <xsl:stylesheet version="1.0" 
   xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
@@ -13,8 +16,11 @@
   xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#" 
   xmlns:oban="http://purl.org/obo/oban/"
   xmlns:owl="http://www.w3.org/2002/07/owl#"
+  xmlns:owl11="&owl11;"
+  xmlns:owl2="&owl2;"
   xmlns:oboInOwl="&oboInOwl;"
   xmlns:oboContent="&oboContent;"
+  xmlns:obo="&obo;"
   >
 
   <!-- *********************************************** -->
@@ -46,7 +52,6 @@
   <!-- *********************************************** -->
   <xsl:template match="text()|@*">
   </xsl:template>
-
 
   <xsl:variable name="default_idspace">
     <xsl:choose>
@@ -303,6 +308,12 @@
   <xsl:template match="format-version">
   </xsl:template>
 
+  <xsl:template match="data-version">
+    <owl:versionInfo>
+      <xsl:value-of select="."/>
+    </owl:versionInfo>
+  </xsl:template>
+
   <xsl:template match="date">
     <oboInOwl:hasDate>
       <xsl:value-of select="."/>
@@ -342,6 +353,7 @@
            transform but are required for round-tripping -->
       <xsl:apply-templates select="import"/>
       <xsl:apply-templates select="format-version"/>
+      <xsl:apply-templates select="data-version"/>
       <xsl:apply-templates select="date"/>
       <xsl:apply-templates select="saved-by"/>
       <xsl:apply-templates select="auto-generated-by"/>
@@ -476,7 +488,7 @@
     
   <xsl:template match="union_of">
     <owl:Class>
-      <xsl:apply-templates mode="about" select="."/>
+      <xsl:apply-templates mode="about" select="to"/>
     </owl:Class>
   </xsl:template>
     
@@ -492,7 +504,15 @@
       <xsl:apply-templates select="@id"/>
       <owl:onProperty>
         <owl:ObjectProperty>
-          <xsl:apply-templates mode="about" select="type"/>
+          <xsl:choose>
+            <xsl:when test="key('k_relation',type)/all_some">
+              <xsl:apply-templates mode="about" select="key('k_relation',type)/all_some"/>
+            </xsl:when>
+            <xsl:otherwise>
+              <xsl:apply-templates mode="about" select="type"/>
+            </xsl:otherwise>
+          </xsl:choose>
+
         </owl:ObjectProperty>
       </owl:onProperty>
       <xsl:choose>
@@ -579,7 +599,9 @@
 
        symmetric, anti_symmetric, reflexive
 
-       Transitive over (not yet supported in OWL 1.0 but supported in obo -->
+       Transitive over (not yet supported in OWL 1.0 but supported in
+       obo 
+-->
   
   <xsl:template match="typedef">
     <xsl:choose>
@@ -605,6 +627,8 @@
         </xsl:element>
       </xsl:otherwise>
     </xsl:choose>
+
+
   </xsl:template>
 
   <xsl:template mode="detail" match="typedef">
@@ -612,7 +636,7 @@
     <!-- most of the following are the same as for terms/classes -->
     <xsl:apply-templates select="id"/>
     <xsl:apply-templates select="name"/>
-    <xsl:apply-templates select="inverse_of"/>
+    <xsl:apply-templates select="inverse_of|inverse_of_on_instance_level"/>
     <xsl:apply-templates select="domain"/>
     <xsl:apply-templates select="range"/>
     <xsl:apply-templates select="comment"/>
@@ -631,6 +655,13 @@
       <rdf:type rdf:resource="&owl;FunctionalProperty"/>
     </xsl:if>
 
+    <!-- reflexivity in OWL is stronger than OBO -->
+    <!--
+    <xsl:if test="is_reflexive=1">
+      <rdf:type rdf:resource="&owl;ReflexiveProperty"/>
+    </xsl:if>
+    -->
+
     <xsl:if test="is_obsolete='1'">
       <rdfs:subPropertyOf rdf:resource="&oboInOwl;ObsoleteProperty"/>
     </xsl:if>
@@ -642,9 +673,31 @@
       </rdfs:subPropertyOf>
     </xsl:for-each>
     <xsl:apply-templates select="property_value"/>
+
+    <xsl:for-each select="transitive_over">
+      <owl:propertyChainAxiom rdf:parseType="Collection">
+        <rdf:Description>
+          <xsl:apply-templates mode="about" select="../id"/>
+        </rdf:Description>
+        <rdf:Description>
+          <xsl:apply-templates mode="about" select="."/>
+        </rdf:Description>
+      </owl:propertyChainAxiom>
+    </xsl:for-each>
+    
+    <xsl:for-each select="(holds_over_chain|equivalent_to_chain)">
+      <owl:propertyChainAxiom rdf:parseType="Collection">
+        <xsl:for-each select="relation">
+          <rdf:Description>
+            <xsl:apply-templates mode="about" select="."/>
+          </rdf:Description>
+        </xsl:for-each>
+      </owl:propertyChainAxiom>
+    </xsl:for-each>
+
   </xsl:template>
 
-  <xsl:template match="inverse_of">
+  <xsl:template match="inverse_of|inverse_of_on_instance_level">
     <owl:inverseOf>
       <xsl:apply-templates mode="resource" select="."/>
     </owl:inverseOf>
@@ -674,6 +727,7 @@
       <xsl:apply-templates select="name"/>
       <xsl:apply-templates select="namespace"/>
       <xsl:apply-templates select="property_value"/>
+      <xsl:apply-templates select="relationship" mode="instance"/>
     </xsl:element>
   </xsl:template>
 
@@ -691,6 +745,52 @@
           <xsl:value-of select="substring-after(type,':')"/>
         </xsl:when>
         <xsl:otherwise>
+          <xsl:text>&oboContent;</xsl:text>
+          <xsl:text>obo:</xsl:text>
+          <xsl:value-of select="type"/>
+        </xsl:otherwise>
+      </xsl:choose>
+    </xsl:variable>
+    <xsl:element name="{$property}">
+      <xsl:if test="contains(type,':')">
+        <xsl:attribute name="xmlns">
+          <xsl:variable name="ns">
+            <xsl:value-of select="substring-before(type,':')"/>
+          </xsl:variable>
+          <xsl:choose>
+            <xsl:when test="key('k_idspace',$ns)">
+              <xsl:value-of select="key('k_idspace',$ns)/global"/>
+            </xsl:when>
+            <xsl:otherwise>
+              <xsl:text>&oboContent;</xsl:text>
+              <xsl:value-of select="$ns"/>
+              <xsl:text>#</xsl:text>
+            </xsl:otherwise>
+          </xsl:choose>
+        </xsl:attribute>
+      </xsl:if>
+      <xsl:choose>
+        <xsl:when test="datatype">
+          <xsl:attribute name="rdf:datatype">
+            <xsl:value-of select="datatype"/>
+          </xsl:attribute>
+          <xsl:value-of select="value"/>
+        </xsl:when>
+        <xsl:otherwise>
+          <xsl:apply-templates mode="resource" select="to"/>
+        </xsl:otherwise>
+      </xsl:choose>
+    </xsl:element>
+  </xsl:template>
+
+  <xsl:template match="relationship" mode="instance">
+    <xsl:variable name="property">
+      <xsl:choose>
+        <xsl:when test="contains(type,':')">
+          <xsl:value-of select="substring-after(type,':')"/>
+        </xsl:when>
+        <xsl:otherwise>
+          <xsl:text>obo:</xsl:text>
           <xsl:value-of select="type"/>
         </xsl:otherwise>
       </xsl:choose>
@@ -790,6 +890,10 @@
            denoted by an IDSpace of a single underscore -->
       <xsl:when test="$idspace = '_'">
         <xsl:value-of select="$localid"/>
+      </xsl:when>
+
+      <xsl:when test="contains(.,'^')">
+        <xsl:text>TODO</xsl:text>
       </xsl:when>
 
       <!-- builtin -->

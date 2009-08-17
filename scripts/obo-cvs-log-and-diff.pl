@@ -2,9 +2,13 @@
 
 $ENV{CVS_RSH} = 'ssh';
 use strict;
+my $diffcmd = 'obodiff';
 while ($ARGV[0] =~ /^\-/) {
     my $opt = shift @ARGV;
-    if ($opt eq '-h' || $opt eq '--help') {
+    if ($opt eq '-d' || $opt eq '--diff') {
+        $diffcmd = shift @ARGV;
+    }
+    elsif ($opt eq '-h' || $opt eq '--help') {
         print usage();
         exit 0;
     }
@@ -37,7 +41,7 @@ foreach my $f (@ARGV) {
         close(OF);
         close(F);
         runcmd("patch -o $f2 < DIFF2");
-        runcmd("obodiff $f2 $f1 > obodiff.$f.$rev-$revp.diff");
+        runcmd("$diffcmd $f2 $f1 > obodiff.$f.$rev-$revp.diff");
         $f1=$f2;
     }
 }

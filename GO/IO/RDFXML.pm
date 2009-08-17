@@ -1,4 +1,4 @@
-# $Id: RDFXML.pm,v 1.11 2007/11/01 20:40:27 girlwithglasses Exp $
+# $Id: RDFXML.pm,v 1.12 2008/08/14 19:02:00 girlwithglasses Exp $
 #
 # This GO module is maintained by Brad Marshall <bradmars@yahoo.com>
 #
@@ -221,8 +221,8 @@ sub draw_term {
     $is_focus = $is_focus || "";
     $show_xrefs = $show_xrefs || "";
 
-    if ($show_terms ne 'no') {
-      if ($is_focus eq "yes") {
+	if ($show_terms ne 'no') {
+		if ($is_focus eq "yes") {
 	$self->{writer}->startTag('go:term', 
 				  'focus'=>'yes', 
 				  'rdf:about'=>'http://www.geneontology.org/go#'.$term->public_acc,
@@ -285,28 +285,25 @@ sub draw_term {
 	      }
 	  }
       }
-      
-      if (defined ($term->selected_association_list)) {
-	foreach my $selected_ass (sort by_gene_product_symbol @{$term->selected_association_list}) {
-	  $self->__draw_association($selected_ass, 1);
+   }
+
+	if (defined ($term->selected_association_list)) {
+		foreach my $selected_ass (sort by_gene_product_symbol @{$term->selected_association_list}) {
+		#	next if $selected_ass->is_not(); # skip negative associations
+			$self->__draw_association($selected_ass, 1);
+		}
 	}
-      }
-      
-      if ($show_associations && $show_associations eq 'yes') {
-	foreach my $ass (sort by_gene_product_symbol @{$term->association_list}) { 
-	  $self->__draw_association($ass, 0);
-	}	
-      }
-      $self->{writer}->endTag('go:term');
-    } else {
-      if (defined ($term->selected_association_list)) {
-	foreach my $selected_ass (sort by_gene_product_symbol @{$term->selected_association_list}) {
-            next if $selected_ass->is_not(); # skip negative associations
-            $self->__draw_association($selected_ass, 1);
+	
+	if ($show_associations && $show_associations eq 'yes') {
+		foreach my $ass (sort by_gene_product_symbol @{$term->association_list}) { 
+		#	next if $selected_ass->is_not(); # skip negative associations
+			$self->__draw_association($ass, 0);
+		}	
 	}
-      }
-    }
-    
+
+   if ($show_terms ne 'no')
+   {  $self->{writer}->endTag('go:term');
+   }
 }
 
 sub by_acc1 {
@@ -327,18 +324,23 @@ sub __draw_association {
   my $self = shift;
   my $ass = shift;
   my $is_selected = shift;
-  
+
   my $rdf_id = 'http://www.geneontology.org/go#'.$ass->go_public_acc;
 
+  # if the association is a 'NOT' one, use the tag 'negative_association'
+  my $ass_type = 'go:association';
+  if ( $ass->is_not() )
+  {	$ass_type = 'go:negative_association';
+  }
 
   if ($is_selected) {
-    $self->{writer}->startTag('go:association', 
+    $self->{writer}->startTag($ass_type, 
 			      'selected'=>'yes',
 			      'rdf:parseType'=>'Resource'
 			     );	  
 
   } else {
-    $self->{writer}->startTag('go:association', 
+    $self->{writer}->startTag($ass_type, 
 			      'rdf:parseType'=>'Resource'
 			     );
 
@@ -366,8 +368,17 @@ sub __draw_association {
   $self->dataElement('go:database_symbol', $ass->gene_product->speciesdb);
   $self->dataElement('go:reference', $ass->gene_product->acc);
   $self->{writer}->endTag('go:dbxref');
-  $self->{writer}->endTag('go:gene_product');   
-  $self->{writer}->endTag('go:association');
+  $self->{writer}->endTag('go:gene_product');
+
+  # add the qualifiers (if any)
+  if ($ass->qualifier_list) {
+     foreach my $q (@{$ass->qualifier_list}) {
+        $self->{writer}->startTag('go:association_qualifier','rdf:parseType'=>'Resource');
+        $self->dataElement('go:qualifier_name', $q->name);
+        $self->{writer}->endTag('go:association_qualifier');
+     }
+  }
+  $self->{writer}->endTag($ass_type);
   
 }
 

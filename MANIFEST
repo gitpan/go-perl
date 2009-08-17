@@ -134,8 +134,6 @@ scripts/ipr2obo_xml
 scripts/map2slim
 scripts/obo-cat.pl
 scripts/obo-cvs-log-and-diff.pl
-scripts/obo-extract-xrefs.pl
-scripts/obo-filter-tags.pl
 scripts/obo-grep.pl
 scripts/obo-merge-tags.pl
 scripts/obo-promote-dbxref-to-intersection.pl
@@ -156,7 +154,6 @@ t/t140subgraph.t
 t/t150xref.t
 t/t160logicaldef.t
 t/t170chadoxml.t
-t/t175chadoxml_oborel.t
 t/t180ncbi_taxonomy.t
 t/t200impliedlinks.t
 t/t210cache.t
@@ -165,7 +162,6 @@ t/t230term_expression.t
 t/t240ga2obj.t
 t/t260oborel_in_chado.t
 t/t270oborel_in_owl.t
-t/t290disjoint.t
 t/validate_all.x
 t/data/GO.defs
 t/data/bad-dbxref.obo
@@ -175,10 +171,8 @@ t/data/go-truncated.obo
 t/data/go-with-local-id-mapping.obo
 t/data/impliedlinks.obo
 t/data/llm.obo
-t/data/llm2.obo
 t/data/mged.obo
 t/data/process.ontology
-t/data/regulation_of_somitogenesis.obo
 t/data/regulation_test.obo
 t/data/relationship.obo
 t/data/sample.ncbi_taxonomy

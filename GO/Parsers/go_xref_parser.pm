@@ -1,4 +1,4 @@
-# $Id: go_xref_parser.pm,v 1.7 2007/03/03 02:06:21 cmungall Exp $
+# $Id: go_xref_parser.pm,v 1.8 2008/12/19 19:57:01 cmungall Exp $
 #
 #
 # see also - http://www.geneontology.org
@@ -63,6 +63,17 @@ sub parse_fh {
     $self->start_event(OBO);
     while (<$fh>) {
         chomp;
+
+        tr [\200-\377]
+          [\000-\177];   # see 'man perlop', section on tr/
+        # weird ascii characters should be excluded
+        tr/\0-\10//d;   # remove weird characters; ascii 0-8
+                        # preserve \11 (9 - tab) and \12 (10-linefeed)
+        tr/\13\14//d;   # remove weird characters; 11,12
+                        # preserve \15 (13 - carriage return)
+        tr/\16-\37//d;  # remove 14-31 (all rest before space)
+        tr/\177//d;     # remove DEL character
+
         $lnum++;
         next if /^\!/;
         next if /^$/;

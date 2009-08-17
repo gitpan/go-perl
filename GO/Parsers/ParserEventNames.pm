@@ -85,6 +85,7 @@ use constant PRODTAXA => 'prodtaxa';
 use constant PRODTYPE => 'prodtype';
 use constant SECONDARY_PRODTAXA => 'secondary_prodtaxa'; # DEPRECATED
 use constant PRODSYN => 'prodsyn';
+use constant ISOFORM => 'isoform';
 
 use constant ASSOCS => 'assocs';
 use constant ASSOC => 'assoc';
@@ -168,6 +169,7 @@ use constant DBXREFS => 'dbxrefs';
                  PRODTYPE 
                  SECONDARY_PRODTAXA 
                  PRODSYN 
+                 ISOFORM
 
                  ASSOC 
                    QUALIFIER

@@ -38,7 +38,7 @@ sub prologquote {
     }
     else {
         $s = '' unless defined $s;
-        if ($s =~ /^\-?[0-9]+$/ && !$force) {
+        if ($s =~ /^[\-]?[0-9]+$/ && !$force) {
             return $s;
         }
         $s =~ s/\'/\'\'/g;

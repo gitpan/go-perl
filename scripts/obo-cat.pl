@@ -24,7 +24,11 @@ exit 0;
 sub catfile {
     my $f=shift;
     my $include=shift;
-    open(F,$f) || die $f;
+    my $ok = open(F,$f);
+    if (!$ok)  {
+        warn("no such file: $f\n");
+        return;
+    }
     unless ($include) {
         while (<F>) {
             last if /^\s*$/;

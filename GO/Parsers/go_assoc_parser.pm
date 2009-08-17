@@ -1,4 +1,4 @@
-# $Id: go_assoc_parser.pm,v 1.17 2007/11/29 01:05:58 cmungall Exp $
+# $Id: go_assoc_parser.pm,v 1.22 2009/08/17 00:46:16 cmungall Exp $
 #
 #
 # see also - http://www.geneontology.org
@@ -110,7 +110,8 @@ sub parse_fh {
         $PRODTAXA,
         $ASSOCDATE,
 	$SOURCE_DB,
-        $PROPERTIES,   # experimental! 
+        $PROPERTIES,   # GAF2.0
+        $ISOFORM,      # GAF2.0
        ) = @COLS;
 
     my @mandatory_cols = ($PRODDB, $PRODACC, $TERMACC, $EVCODE);
@@ -207,6 +208,7 @@ sub parse_fh {
 	    }
 	    if (!defined($vals[$i]) ||
 		length ($vals[$i]) == 0) {
+
 		if ( grep {$i == $_} @mandatory_cols) {
 		    $self->parse_err("no value defined for col ".($i+1)." in line_no $line_no line\n$line\n");
 		    next;
@@ -215,23 +217,30 @@ sub parse_fh {
 	    }
 	}
 
-    my ($proddb,
-        $prodacc,
-        $prodsymbol,
-        $qualifier,
-        $termacc,
-        $ref,
-        $evcode,
-        $with,
-        $aspect,
-        $prodname,
-        $prodsyn,
-        $prodtype,
-        $prodtaxa,
-        $assocdate,
-	$source_db,
-        $properties) = @vals;
+        my ($proddb,
+            $prodacc,
+            $prodsymbol,
+            $qualifier,
+            $termacc,
+            $ref,
+            $evcode,
+            $with,
+            $aspect,
+            $prodname,
+            $prodsyn,
+            $prodtype,
+            $prodtaxa,
+            $assocdate,
+            $source_db,
+            $properties,                     # GAF2.0
+            $isoform) = @vals;               # GAF2.0
 
+        # backward compatibility GAF2.0 -> GAF1.0
+        $properties = '' unless defined $properties;
+        $isoform = '' unless defined $isoform;
+
+        $assocdate = '' unless defined $assocdate;
+        $source_db = '' unless defined $source_db;
 
 #	if (!grep {$aspect eq $_} qw(P C F)) {
 #	    $self->parse_err("Aspect column says: \"$aspect\" - aspect must be P/C/F");
@@ -244,10 +253,6 @@ sub parse_fh {
 	if (!($ref =~ /:/)) {
             # ref does not have a prefix - we assume it is medline
 	    $ref = "medline:$ref";
-	}
-	if ($with eq "IEA") {
-	    $self->parse_err("SERIOUS COLUMN PROBLEM: IGNORING LINE");
-	    next;
 	}
 	if ($skip_uncurated && $evcode eq "IEA") {
 	    next;
@@ -287,13 +292,21 @@ sub parse_fh {
 	my $new_prodacc =
 	  $prodacc ne $last[$PRODACC] || $new_dbset;
 	my $new_assoc =
-	  ($termacc ne $last[$TERMACC]) ||
-	    $new_prodacc ||
-	      ($qualifier ne $last[$QUALIFIER]) ||
-		($source_db ne $last[$SOURCE_DB]) ||
-		  ($assocdate ne $last[$ASSOCDATE]);
+            ($termacc ne $last[$TERMACC]) ||
+            $new_prodacc ||
+            ($qualifier ne $last[$QUALIFIER]) ||
+            ($source_db ne $last[$SOURCE_DB]) ||
+            ($assocdate ne $last[$ASSOCDATE]) ||
+            ($isoform ne $last[$ISOFORM]);
 
-        if (!$new_prodacc && ($prodtaxa ne $last[$PRODTAXA])) {
+        #if (!$new_prodacc && ($prodtaxa ne $last[$PRODTAXA])) {
+	## Before we declare an error, let's make sure that we're not
+	## talking about secondary taxons...
+	my $chopped_taxa = $prodtaxa;
+	my $chopped_prev_taxa = $last[$PRODTAXA];
+	$chopped_taxa =~ s/\|.+//;
+	$chopped_prev_taxa =~ s/\|.+//;
+        if (!$new_prodacc && ($chopped_taxa ne $chopped_prev_taxa)) {
             # two identical gene products with the same taxon
             # IGNORE!
 	    $self->parse_err("different taxa ($prodtaxa, $last[$PRODTAXA]) for same product $prodacc");
@@ -365,6 +378,9 @@ sub parse_fh {
 	    $self->event(QUALIFIER, $_) foreach @quals;
             $self->event(SPECIES_QUALIFIER, $_) foreach @prodtaxa_ids; # all REMAINING (after "|') tax ids are qualifiers
 	    $self->event(ASPECT, $aspect);
+            if ($isoform) {
+                $self->event(ISOFORM, $isoform);
+            }
             if ($properties) {
                 my @properties_list = split(/\|/,$properties);
                 if (!$obo_parser) {
@@ -412,6 +428,7 @@ sub parse_fh {
            $assocdate,
            $source_db,
            $properties,
+           $isoform,
           );
     }
     $fh->close;

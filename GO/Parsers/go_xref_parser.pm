@@ -1,4 +1,4 @@
-# $Id: go_xref_parser.pm,v 1.8 2008/12/19 19:57:01 cmungall Exp $
+# $Id: go_xref_parser.pm,v 1.9 2010/02/15 17:34:57 cmungall Exp $
 #
 #
 # see also - http://www.geneontology.org
@@ -80,7 +80,7 @@ sub parse_fh {
         $self->line($_);
         $self->line_no($lnum);
         my ($ext, @goids) = split(' > ',$_);
-        if ($ext =~ /^(\w+):?(\S+)(.*)/) {
+        if ($ext =~ /^([\w\-]+):?(\S+)(.*)/) {
             my ($db,$dbacc,$name) = ($1,$2,$3);
             $name =~ s/^\s+// if $name;
             $dbacc =~ s/\s/\%20/g;

@@ -27,6 +27,12 @@ sub e_header {
         $self->factq('metadata_db:partition'=>[$id]);
         $self->factq('metadata_db:entity_label', [$id, $name]) if $name;
     }
+    foreach ($hdr->get_synonymtypedef) {
+        my $id = $_->sget_id;
+        my $name = $_->sget_name;
+        my $scope = $_->sget_scope || '';
+        $self->factq('metadata_db:synonym_type_desc'=>[$id,$scope,$name]);
+    }
     foreach ($hdr->get_import) {
         $self->factq('ontol_db:import_directive'=>[$_]);
     }
@@ -268,6 +274,9 @@ sub _flatten_dbxref {
     my $acc = $x->sget_acc;
     if ($db eq "URL" && $acc =~ /http/) {  # TODO - check for all URI forms (LSID,...)
         return $acc;
+    }
+    elsif ($acc eq 'NULL') {
+        return $db;
     }
     else {
         return "$db:$acc";

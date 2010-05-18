@@ -147,7 +147,7 @@ pod.tar.gz :: pod\
 XSL_SRC_DIR = ../xml/xsl
 
 # xsls which go-perl can use
-XSL = chadoxml_to_oboxml oboxml_filter oboxml_to_chadoxml oboxml_to_dig oboxml_to_godb_prestore oboxml_to_obotext oboxml_to_owl oboxml_to_simple_owl oboxml_to_racer owl_to_oboxml oboxml_to_summary_table ipr_to_oboxml oboxml_to_obd_prestore
+XSL = chadoxml_to_oboxml oboxml_filter oboxml_to_chadoxml oboxml_to_dig oboxml_to_godb_prestore oboxml_to_obotext oboxml_to_owl oboxml_to_simple_owl oboxml_to_racer owl_to_oboxml oboxml_to_summary_table ipr_to_oboxml oboxml_to_obd_prestore text_html
 
 XSL_FILES = \$(patsubst %,\$(XSL_SRC_DIR)/%.xsl,\$(XSL))
 

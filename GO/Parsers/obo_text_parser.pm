@@ -1,4 +1,4 @@
-# $Id: obo_text_parser.pm,v 1.50 2009/08/12 20:58:25 cmungall Exp $
+# $Id: obo_text_parser.pm,v 1.52 2010/03/11 22:40:27 cmungall Exp $
 #
 #
 # see also - http://www.geneontology.org
@@ -286,7 +286,7 @@ sub parse_fh_inner {
                         $type = "$default_id_prefix:$type";
                     }
                 }
-		if ($id) {
+		if (defined $id) {
                     $val = [[TYPE,$type],[TO,$id]];
                 }
                 else {
@@ -444,6 +444,11 @@ sub parse_fh_inner {
                 } @rels;
 		$val = [map {[relation=>$_]} @rels];
 	    }
+	    elsif ($tag =~ /^expand/) {
+		my ($template, $parts) =
+		  extract_qstr($val);
+		$val = $template;
+	    }
 	    else {
 		$val = $val2;
 		# normal tag:val
@@ -526,7 +531,7 @@ sub extract_quals {
     my $str = shift;
 
     my %q = ();
-    if ($str =~ /(.*)\s+(\{.*)\}\s*$/) {
+    if ($str =~ /(.*[^\s])\s+(\{.*)\}\s*$/) {
         my $return_str = $1;
         my $extr = $2;
         if ($extr) {

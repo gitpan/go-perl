@@ -26,7 +26,6 @@
   <!-- *********************************************** -->
   <!-- Imports -->
   <!-- *********************************************** -->
-
   
   <!-- *********************************************** -->
   <!-- Parameters -->
@@ -141,6 +140,8 @@
       <owl:AnnotationProperty rdf:about="&oboInOwl;savedBy"/>
       <owl:AnnotationProperty rdf:about="&oboInOwl;replacedBy"/>
       <owl:AnnotationProperty rdf:about="&oboInOwl;consider"/>
+      <owl:AnnotationProperty rdf:about="&oboInOwl;expandAssertionTo"/>
+      <owl:AnnotationProperty rdf:about="&oboInOwl;expandExpressionTo"/>
       <owl:Class rdf:about="&oboInOwl;DbXref"/>
       <owl:Class rdf:about="&oboInOwl;Definition"/>
       <owl:Class rdf:about="&oboInOwl;Subset"/>
@@ -156,7 +157,6 @@
       <xsl:apply-templates select="obo/instance"/>
     </rdf:RDF>
   </xsl:template>
-
 
   <!-- *********************************************** -->
   <!-- GENERAL PURPOSE -->
@@ -486,6 +486,7 @@
     </xsl:choose>
   </xsl:template>
     
+  <!-- TODO -->
   <xsl:template match="union_of">
     <owl:Class>
       <xsl:apply-templates mode="about" select="to"/>
@@ -499,38 +500,64 @@
   </xsl:template>
     
   <xsl:template mode="restriction" match="*">
-    <owl:Restriction>
-      <!-- only used if relationship is reified -->
-      <xsl:apply-templates select="@id"/>
-      <owl:onProperty>
-        <owl:ObjectProperty>
-          <xsl:choose>
-            <xsl:when test="key('k_relation',type)/all_some">
-              <xsl:apply-templates mode="about" select="key('k_relation',type)/all_some"/>
+    <xsl:choose>
+      <xsl:when test="key('k_relation',type)/is_metadata_tag = '1'">
+	<!-- TODO -->
+      </xsl:when>
+      <xsl:otherwise>
+	<owl:Restriction>
+	  <!-- only used if relationship is reified -->
+	  <xsl:apply-templates select="@id"/>
+	  <owl:onProperty>
+            <owl:ObjectProperty>
+              <xsl:choose>
+		<xsl:when test="key('k_relation',type)/all_some">
+		  <xsl:apply-templates mode="about" select="key('k_relation',type)/all_some"/>
+		</xsl:when>
+		<xsl:otherwise>
+		  <xsl:apply-templates mode="about" select="type"/>
+		</xsl:otherwise>
+              </xsl:choose>
+	      
+            </owl:ObjectProperty>
+	  </owl:onProperty>
+	  <xsl:choose>
+            <xsl:when test="key('k_instance',to)">
+              <owl:hasValue>
+		<xsl:apply-templates mode="resource" select="to"/>
+              </owl:hasValue>
             </xsl:when>
             <xsl:otherwise>
-              <xsl:apply-templates mode="about" select="type"/>
+              <!-- TODO: For now we make the assumption that all relations
+		   are existential (this is the case for all OBO relations)
+		   may not be the case for non-foundry ontologies -->
+              <owl:someValuesFrom>
+		<xsl:apply-templates mode="resource" select="to"/>
+              </owl:someValuesFrom>
             </xsl:otherwise>
-          </xsl:choose>
+	  </xsl:choose>
+	</owl:Restriction>
+      </xsl:otherwise>
+    </xsl:choose>
+  </xsl:template>
 
-        </owl:ObjectProperty>
-      </owl:onProperty>
-      <xsl:choose>
-        <xsl:when test="key('k_instance',to)">
-          <owl:hasValue>
-            <xsl:apply-templates mode="resource" select="to"/>
-          </owl:hasValue>
-        </xsl:when>
-        <xsl:otherwise>
-          <!-- TODO: For now we make the assumption that all relations
-               are existential (this is the case for all OBO relations)
-               may not be the case for non-foundry ontologies -->
-          <owl:someValuesFrom>
-            <xsl:apply-templates mode="resource" select="to"/>
-          </owl:someValuesFrom>
-        </xsl:otherwise>
-      </xsl:choose>
-    </owl:Restriction>
+  <!-- full expansion happens as a separate post-processor -->
+  <xsl:template match="expands_to">
+    <oboInOwl:expandsTo>
+      <xsl:value-of select="."/>
+    </oboInOwl:expandsTo>
+  </xsl:template>
+
+  <xsl:template match="expand_expression_to">
+    <oboInOwl:expandExpressionTo>
+      <xsl:value-of select="."/>
+    </oboInOwl:expandExpressionTo>
+  </xsl:template>
+
+  <xsl:template match="expand_assertion_to">
+    <oboInOwl:expandAssertionTo>
+      <xsl:value-of select="."/>
+    </oboInOwl:expandAssertionTo>
   </xsl:template>
 
   <xsl:template match="def">
@@ -628,7 +655,6 @@
       </xsl:otherwise>
     </xsl:choose>
 
-
   </xsl:template>
 
   <xsl:template mode="detail" match="typedef">
@@ -647,6 +673,7 @@
     <xsl:apply-templates select="alt_id"/>
     <xsl:apply-templates select="xref_analog|xref"/>
     <xsl:apply-templates select="lexical_category"/>
+    <xsl:apply-templates select="expands_to|expand_expression_to|expand_assertion_to"/>
 
     <xsl:if test="is_symmetric=1">
       <rdf:type rdf:resource="&owl;SymmetricProperty"/>
@@ -745,8 +772,10 @@
           <xsl:value-of select="substring-after(type,':')"/>
         </xsl:when>
         <xsl:otherwise>
+	  <!-- 
           <xsl:text>&oboContent;</xsl:text>
           <xsl:text>obo:</xsl:text>
+	  -->
           <xsl:value-of select="type"/>
         </xsl:otherwise>
       </xsl:choose>
@@ -893,7 +922,17 @@
       </xsl:when>
 
       <xsl:when test="contains(.,'^')">
-        <xsl:text>TODO</xsl:text>
+        <xsl:text>&oboContent;</xsl:text>
+	<xsl:call-template name="url-encode">
+	  <xsl:with-param name="str" select="."/>
+	</xsl:call-template>
+      </xsl:when>
+
+      <xsl:when test="contains('0123456789',substring(.,1,1))">
+        <xsl:text>&oboContent;</xsl:text>
+	<xsl:call-template name="url-encode">
+	  <xsl:with-param name="str" select="."/>
+	</xsl:call-template>
       </xsl:when>
 
       <!-- builtin -->
@@ -965,7 +1004,49 @@
 
 
   <!-- *********************************************** -->
+  <!-- http://skew.org/xml/stylesheets/url-encode/url-encode.xsl -->
 
+  <xsl:variable name="ascii">
+    !"#$%'()*+,-./0123456789:;&lt;=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~
+  </xsl:variable>
+
+  <xsl:variable name="safe">!'()*-.0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz~</xsl:variable>
+  <xsl:variable name="hex">0123456789ABCDEF</xsl:variable>
+
+  <xsl:template name="url-encode">
+    <xsl:param name="str"/>
+    <xsl:if test="$str">
+      <xsl:variable name="first-char" select="substring($str,1,1)"/>
+      <xsl:choose>
+	<xsl:when test="contains($safe,$first-char)">
+	  <xsl:value-of select="$first-char"/>
+	</xsl:when>
+	<xsl:otherwise>
+	  <xsl:variable name="codepoint">
+	    <xsl:choose>
+	      <xsl:when test="contains($ascii,$first-char)">
+		<xsl:value-of select="string-length(substring-before($ascii,$first-char)) + 32"/>
+	      </xsl:when>
+	      <xsl:otherwise>
+		<xsl:message terminate="no">
+		  Warning: string contains a character that is out of range! Substituting "?".
+		</xsl:message>
+		<xsl:text>63</xsl:text>
+	      </xsl:otherwise>
+	    </xsl:choose>
+	  </xsl:variable>
+	  <xsl:variable name="hex-digit1" select="substring($hex,floor($codepoint div 16) + 1,1)"/>
+	  <xsl:variable name="hex-digit2" select="substring($hex,$codepoint mod 16 + 1,1)"/>
+	  <xsl:value-of select="concat('%',$hex-digit1,$hex-digit2)"/>
+	</xsl:otherwise>
+      </xsl:choose>
+      <xsl:if test="string-length($str) > 1">
+	<xsl:call-template name="url-encode">
+	  <xsl:with-param name="str" select="substring($str,2)"/>
+	</xsl:call-template>
+      </xsl:if>
+    </xsl:if>
+  </xsl:template>
 
 </xsl:stylesheet>
 

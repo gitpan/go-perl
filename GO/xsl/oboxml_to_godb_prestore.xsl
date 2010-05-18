@@ -32,6 +32,10 @@
         <map>term2/term2term.term2_id=term.id</map>
         <map>type/term2term.relationship_type_id=term.id</map>
 
+        <map>term1/intersection_of.term1_id=term.id</map>
+        <map>term2/intersection_of.term2_id=term.id</map>
+        <map>type/intersection_of.relationship_type_id=term.id</map>
+
         <map>relation1/relation_composition.relation1_id=term.id</map>
         <map>relation2/relation_composition.relation2_id=term.id</map>
         <map>inferred_relation/relation_composition.inferred_relation_id=term.id</map>
@@ -45,6 +49,7 @@
         <map>type/synonym.type_id=term.id</map>
         <map>parentfk:term2term.term2_id</map>
         <map>parentfk:term2term_metadata.term2_id</map>
+        <map>parentfk:intersection_of.term2_id</map>
         <map>subset/term_subset.subset_id=term.id</map>
       </dbstag_metadata>
       <xsl:apply-templates select="*/source"/>
@@ -377,16 +382,24 @@
   </xsl:template>
 
   <!-- see obo1.2 docs for more info on this tag -->
-  <!-- intersection_ofs (aka logical definitions) are
-       recorded in the DAG as a collection of intersection_of
-       relationships between the defined term and either
-       (a) another term (the genus, or generic term)
-       (b) an anonymous term, itself linked to another term by a
-           relationship of some type (a differentium)
-       -->
+  <!-- 
+
+ a logical definition <"oocyte nucleus" = nucleus and part_of oocyte>
+ would be written in obo format as
+
+  [Term]
+  id: GO:oocyte_nucleus
+  name: oocyte nucleus
+  intersection_of: GO:nucleus
+  intersection_of: part_of CL:oocyte
+
+ we would have two rows in this table
+ row1 = <term2="GO:oocyte nucleus" term1="GO:nucleus" rel="is_a">
+ row1 = <term2="GO:oocyte nucleus" term1="CL:oocyte" rel="part_of">
+
+  -->
   <xsl:template match="intersection_of">
-    <term2term>
-      <complete>1</complete>
+    <intersection_of>
       <type>
         <term>
           <acc>
@@ -419,7 +432,7 @@
           </acc>
         </term>
       </term1>
-    </term2term>
+    </intersection_of>
   </xsl:template>
 
   <xsl:template match="synonym">

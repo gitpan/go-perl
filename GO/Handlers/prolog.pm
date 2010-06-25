@@ -114,9 +114,9 @@ directed_simple_path_over directed_path_over reflexive_over)) {
             $self->factq( holds_over_chain=>[$id,\@rels]);
         }
     }
-    my @relchains = $typedef->get_equivalent_to_chain;
-    foreach my $relchain (@relchains) {
-        my @rels = $relchain->get_relation;
+    my @equivchains = $typedef->get_equivalent_to_chain;
+    foreach my $equivchain (@equivchains) {
+        my @rels = $equivchain->get_relation;
         if (@rels) {
             $self->factq( equivalent_to_chain=>[$id,\@rels]);
         }
@@ -397,7 +397,7 @@ sub e_prod {
     my $idh = $self->nextid_by_prod;
     foreach my $assoc (@assocs) {
         my $n = $idh->{$id}++;
-        my $term_acc = $assoc->sget_termacc;
+	my $term_acc = $assoc->sget_termacc;
         my $is_not = $assoc->sget_is_not ? 1 : 0;
         my $aid = "$proddb:association-$id-$term_acc-$is_not";
         $self->fact('curation',[$aid]);
@@ -428,6 +428,10 @@ sub e_prod {
         $self->factq('metadata_db:entity_publisher',
                      [$aid,$_])
           foreach $assoc->get_source_db;
+        foreach ($assoc->get('properties/link')) {
+            $self->factq('curation_subject_property_value',
+                         [$aid,$term_acc,$_->get_type,$_->get_to])
+        }
         foreach ($assoc->get_assocdate) {
             if (length($_) eq 8) {
                 $_ = sprintf("%s-%s-%s",
@@ -442,6 +446,12 @@ sub e_prod {
         foreach my $pv (@pvs) {
             $self->factq('curation_qualifier',
                         [$aid,$pv->sget_type,$pv->sget_to]);
+        }
+        my @quals = $assoc->get_qualifier;
+        foreach my $q (@quals) {
+	    next if $q eq 'not';
+            $self->factq('curation_qualifier',
+                        [$aid,$q,"true"]);
         }
     }
 }

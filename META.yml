@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:               go-perl
-version:            0.12
+version:            0.13
 abstract:           GO Perl
 author:
     - Chris Mungall <cjm@fruitfly.org>

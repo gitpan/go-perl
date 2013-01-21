@@ -67,7 +67,6 @@ eg
   $parser = GO::Parser->new({handler=>'obj'});
   $parser->parse(@files);
   my $graph = $parser->graph;
-  
 
 =cut
 
@@ -79,7 +78,6 @@ sub g {
 
 *graph = \&g;
 *ontology = \&g;
-
 
 sub apph {
     my $self = shift;
@@ -280,13 +278,14 @@ sub stanza {
             $ldef->add_intersection($isect);
         }
         elsif ($k eq UNION_OF) {
-            $term->add_equivalent_to_union_of_term($v);
+            my $obj = stag_get($sn, TO);
+            $term->add_equivalent_to_union_of_term($obj);
         }
         elsif ($k eq DISJOINT_FROM) {
             $term->add_disjoint_from_term($v);
         }
         else {
-            warn("add method for $k");
+#            warn("add method for $k");
             $term->stag->add($k, $v);
 
 #            $self->throw("don't know what to do with $k");

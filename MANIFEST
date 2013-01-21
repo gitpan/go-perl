@@ -198,4 +198,5 @@ GO/xsl/oboxml_to_simple_owl.xsl
 GO/xsl/oboxml_to_summary_table.xsl
 GO/xsl/owl_to_oboxml.xsl
 GO/xsl/text_html.xsl
-META.yml                                 Module meta-data (added by MakeMaker)
+META.yml                                 Module YAML meta-data (added by MakeMaker)
+META.json                                Module JSON meta-data (added by MakeMaker)

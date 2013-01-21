@@ -22,7 +22,7 @@ sub e_header {
         $self->factq('metadata_db:idspace_uri'=>[$1,$2]);
     }
     if ($hdr->get_ontology) {
-        $self->factq('ontology'=>[$hdr->get_ontology]);
+        $self->factq('ontology'=>[$hdr->sget_ontology]);
     }
     foreach ($hdr->get_subsetdef) {
         my $id = $_->sget_id;
@@ -38,6 +38,14 @@ sub e_header {
     }
     foreach ($hdr->get_import) {
         $self->factq('ontol_db:import_directive'=>[$_]);
+    }
+    foreach ($hdr->subnodes) {
+        my $n = $_->name;
+        if ($n =~ /^treat/) {
+            $n =~ s/\-/_/g;
+            my @vals = split(' ',$_->data);
+            $self->factq("ontol_db:$n"=>[@vals]);
+        }
     }
     $self->nl;
     return;
@@ -60,7 +68,23 @@ sub e_typedef {
     my $name = $typedef->sget_name;
     $self->factq('metadata_db:entity_label', [$id, $name]) if $name;
     my @is_as = $typedef->get_is_a;
-    $self->rfactq($_, 'subclass', [$id, $_]) foreach @is_as;
+    foreach my $is_a (@is_as) {
+        if (ref($is_a)) {
+            my $gci_rel = $is_a->sget('@/gci_relation');
+            if ($gci_rel) {
+                $self->rfactq($_,
+                              'gci_subclass', 
+                              [$id,$is_a->data, $gci_rel, $is_a->sget('@/gci_filler')]);
+            }
+            else {
+                $self->rfactq($_, 'subclass', [$id, $is_a->data]);
+            }
+        }
+        else {
+                $self->rfactq($_, 'subclass', [$id, $is_a]);
+        }
+    }
+
     if ($ont) {
 	$self->factq('metadata_db:entity_resource', [$id, $ont]);
     }
@@ -178,7 +202,7 @@ sub e_term {
     $self->rfactq($_,'subclass', [$id, ref($_) ? $_->get('.') : $_], $name_h->{$_}) foreach @is_as;
 
     my @equivs = $term->get_equivalent_to;
-    $self->rfactq($_, 'equivalent_class', [$id, $_]) foreach @equivs;
+    $self->rfactq($_, 'equivalent_class', [$id, ref($_) ? $_->get('.') : $_]) foreach @equivs;
 
     my @xp = $term->get_intersection_of;
     if (scalar(@xp) == 1) {
@@ -232,10 +256,19 @@ sub e_term {
     foreach (@rels) {
         my @args =
           ($id, $_->get_type, convert_to_ref($_->get_to), map { convert_to_ref($_) } $_->get_additional_argument);
-        $self->rfactq($_,
-		     'restriction', 
-                     [@args], 
-                     $name_h->{$_->get_to});
+        my $gci_rel = $_->sget('@/gci_relation');
+        if ($gci_rel) {
+            $self->rfactq($_,
+                          'gci_restriction', 
+                          [@args, $gci_rel, $_->sget('@/gci_filler')], 
+                          $name_h->{$_->get_to});
+        }
+        else {
+            $self->rfactq($_,
+                          'restriction', 
+                          [@args], 
+                          $name_h->{$_->get_to});
+        }
         foreach my $cardp (qw(cardinality minCardinality maxCardinality)) {
             my $card = $_->sget('@/'.$cardp);
             if ($card) {
@@ -420,6 +453,31 @@ sub e_prod {
         }
         $self->fact($pred,
                     [$aid,$id,'has_role',$term_acc]);
+
+        my $aspect = $assoc->sget_aspect;
+        if ($aspect) {
+            if (!$self->{_written_aspect}) {
+                $self->{_written_aspect} = {};
+            }
+            if (!$self->{_written_aspect}->{$term_acc}) {
+                $self->{_written_aspect}->{$term_acc} = 1;
+                my $ont = '';
+                if ($aspect eq 'F') {
+                    $ont = 'molecular_function';
+                }
+                elsif ($aspect eq 'P') {
+                    $ont = 'biological_process';
+                }
+                elsif ($aspect eq 'C') {
+                    $ont = 'cellular_component';
+                }
+                if ($ont) {
+                    $self->fact('metadata_db:entity_resource',[$term_acc,$ont]);
+                }
+            }
+            
+        }
+
         my @evs = $assoc->get_evidence;
         my $ne=0;
         foreach my $ev (@evs) {
@@ -525,9 +583,9 @@ sub e_annotation {
 sub e_instance {
     my ($self, $inst) = @_; 
     my $id = $inst->get_id;
-    my $class = $inst->get_instance_of;
     $self->factq('inst', [$id]);
-    $self->factq('inst_of',[$id,$class]);
+    $self->factq('inst_of',[$id,$_])
+        foreach $inst->get_instance_of;
     my $name = $inst->sget_name;
     $self->factq('metadata_db:entity_label', [$id, $name]) if $name;
     $self->export_tags($inst);
